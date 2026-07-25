@@ -2,15 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-type Question = {
-  grade: number;
-  topic: string;
-  question: string;
-  options: string[];
-  answer: number;
-  hint: string;
-};
-
+type Question = { grade: number; topic: string; question: string; options: string[]; answer: number; hint: string };
 const questions: Question[] = [
   { grade: 1, topic: "Сложение и вычитание до 10", question: "Сколько будет 8 − 3?", options: ["4", "5", "6", "7"], answer: 1, hint: "Можно отсчитать 3 шага назад от 8." },
   { grade: 1, topic: "Переход через десяток", question: "Сколько будет 14 + 5?", options: ["18", "19", "20", "21"], answer: 1, hint: "До 20 не хватает 6, значит прибавляем 5." },
@@ -30,118 +22,38 @@ const questions: Question[] = [
   { grade: 4, topic: "Задачи на движение", question: "Машина ехала 3 часа со скоростью 60 км/ч. Сколько километров она проехала?", options: ["20 км", "63 км", "180 км", "360 км"], answer: 2, hint: "Расстояние = скорость × время." },
 ];
 
-const gradeTopics = [
-  ["Числа до 100", "Сложение и вычитание", "Задачи и величины"],
-  ["Нумерация до 100", "Действия в пределах 100", "Умножение и геометрия"],
-  ["Числа до 1000", "Умножение и деление", "Дроби и фигуры"],
-  ["Многозначные числа", "Письменные действия", "Дроби, величины, задачи"],
-];
+function Header({ onHome }: { onHome: () => void }) {
+  return <header className="junior-header"><button className="logo-button" onClick={onHome} aria-label="На главную"><img src="/junior-logo.png" alt="Junior" /></button><nav><button onClick={onHome}>Главная</button><span>Диагностика</span></nav><div className="header-actions"><span className="lang">RU</span><span className="profile-dot">◔</span></div></header>;
+}
 
 export default function Home() {
-  const [screen, setScreen] = useState<"welcome" | "test" | "result">("welcome");
-  const [name, setName] = useState("");
+  const [screen, setScreen] = useState<"subjects" | "classes" | "test" | "result">("subjects");
+  const [selectedClass, setSelectedClass] = useState<number | null>(null);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(Array(questions.length).fill(null));
-
   const selected = answers[index];
-  const scoreByGrade = useMemo(() => [1, 2, 3, 4].map((grade) => {
-    const gradeQuestions = questions.filter((q) => q.grade === grade);
-    const correct = gradeQuestions.filter((q) => answers[questions.indexOf(q)] === q.answer).length;
-    return { grade, correct, total: gradeQuestions.length, percent: correct / gradeQuestions.length };
-  }), [answers]);
+  const scoreByGrade = useMemo(() => [1, 2, 3, 4].map((grade) => { const qs = questions.filter((q) => q.grade === grade); const correct = qs.filter((q) => answers[questions.indexOf(q)] === q.answer).length; return { grade, correct, total: qs.length, percent: correct / qs.length }; }), [answers]);
   const totalCorrect = scoreByGrade.reduce((sum, item) => sum + item.correct, 0);
   const firstGap = scoreByGrade.find((item) => item.percent < 0.75);
   const recommendation = firstGap?.grade ?? 4;
 
-  function begin() {
-    setScreen("test");
-    setIndex(0);
-  }
+  function chooseClass(grade: number) { setSelectedClass(grade); setIndex(Math.max(0, questions.findIndex((question) => question.grade === grade))); setScreen("test"); }
+  function choose(option: number) { const next = [...answers]; next[index] = option; setAnswers(next); }
+  function nextQuestion() { if (index === questions.length - 1) setScreen("result"); else setIndex(index + 1); }
+  function reset() { setAnswers(Array(questions.length).fill(null)); setIndex(0); setSelectedClass(null); setScreen("subjects"); }
 
-  function choose(option: number) {
-    const next = [...answers];
-    next[index] = option;
-    setAnswers(next);
-  }
+  return <main className={`app-shell screen-${screen}`}>
+    <Header onHome={reset} />
 
-  function nextQuestion() {
-    if (index === questions.length - 1) setScreen("result");
-    else setIndex(index + 1);
-  }
+    {screen === "subjects" && <section className="subject-screen"><div className="subject-intro"><p>Диагностика уровня</p><h1>Давай узнаем,<br />что ты уже <i>умеешь</i></h1><span>Выбери предмет — это займёт всего несколько минут.</span></div><div className="subject-cards">
+      <button className="subject-card math-card" onClick={() => setScreen("classes")}><div><small>ДОСТУПНО СЕЙЧАС</small><h2>Математика</h2><p>Определим подходящий класс<br />и темы для старта.</p><b>Пройти тест <em>→</em></b></div><img src="/junior-robot.png" alt="Робот Junior" /></button>
+      <div className="subject-card english-card" aria-label="Английский язык — скоро"><div><small>СКОРО</small><h2>Английский<br />язык</h2><p>Диагностика появится<br />совсем скоро.</p></div><span className="lock">⌁</span></div>
+    </div></section>}
 
-  function restart() {
-    setAnswers(Array(questions.length).fill(null));
-    setIndex(0);
-    setScreen("welcome");
-  }
+    {screen === "classes" && <section className="class-screen"><button className="back-link" onClick={() => setScreen("subjects")}>← Назад к предметам</button><div className="class-title"><p>Математика</p><h1>Выбери свой класс</h1><span>Подготовим задания, подходящие именно тебе.</span></div><div className="class-grid">{Array.from({ length: 11 }, (_, i) => i + 1).map((grade) => <button key={grade} className={`class-card ${grade > 4 ? "locked" : ""}`} disabled={grade > 4} onClick={() => chooseClass(grade)}><b>{grade}</b><span>класс</span>{grade > 4 && <small>Скоро</small>}</button>)}</div></section>}
 
-  return (
-    <main>
-      <header className="topbar">
-        <a className="brand" href="#top" aria-label="Математика по ступенькам">
-          <span className="brand-mark">∑</span>
-          <span>Математика<br /><b>по ступенькам</b></span>
-        </a>
-        <span className="topbar-note">Диагностика 1–4 классов</span>
-      </header>
+    {screen === "test" && <section className="test-screen"><div className="test-top"><button className="back-link" onClick={() => setScreen("classes")}>← К выбору класса</button><span>Математика · {selectedClass} класс</span><span>{index + 1} / {questions.length}</span></div><div className="progress"><i style={{ width: `${((index + 1) / questions.length) * 100}%` }} /></div><article className="test-card"><div className="test-label">{questions[index].topic}</div><h1>{questions[index].question}</h1><div className="answers">{questions[index].options.map((option, optionIndex) => <button key={option} className={selected === optionIndex ? "selected" : ""} onClick={() => choose(option)}><b>{String.fromCharCode(65 + optionIndex)}</b>{option}</button>)}</div><div className="test-actions"><button className="text-button" disabled={index === 0} onClick={() => setIndex(index - 1)}>Назад</button><button className="orange-button" disabled={selected === null} onClick={nextQuestion}>{index === questions.length - 1 ? "Показать результат" : "Продолжить →"}</button></div></article></section>}
 
-      {screen === "welcome" && (
-        <section id="top" className="welcome-shell">
-          <div className="hero-copy">
-            <p className="eyebrow">Стартовая диагностика</p>
-            <h1>Найдём класс,<br /><em>в котором учиться</em><br />будет уверенно</h1>
-            <p className="lead">16 коротких заданий по ключевым темам программы. Без оценок и таймера — только честный старт.</p>
-            <div className="name-row">
-              <label htmlFor="student-name">Имя ученика <span>необязательно</span></label>
-              <input id="student-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Например, Азиза" />
-            </div>
-            <button className="primary-button" onClick={begin}>Начать диагностику <span>→</span></button>
-            <p className="small-note">Обычно занимает 8–12 минут</p>
-          </div>
-          <div className="hero-card" aria-label="Маршрут по классам">
-            <div className="paper-tape">Твой маршрут</div>
-            <div className="path-line" />
-            {[1, 2, 3, 4].map((grade) => <div key={grade} className={`grade-stop grade-${grade}`}><strong>{grade}</strong><span>класс</span></div>)}
-            <div className="hero-card-caption"><b>От простого к сложному</b><br />Проверяем фундамент, а не скорость.</div>
-          </div>
-        </section>
-      )}
-
-      {screen === "welcome" && <section className="program-section">
-        <div><p className="eyebrow">Что проверяем</p><h2>Опираемся на темы<br />вашей программы</h2></div>
-        <div className="program-grid">
-          {gradeTopics.map((topics, i) => <article key={i} className="program-card"><span>0{i + 1}</span><h3>{i + 1} класс</h3>{topics.map((topic) => <p key={topic}>{topic}</p>)}</article>)}
-        </div>
-      </section>}
-
-      {screen === "test" && (
-        <section className="test-shell">
-          <div className="test-head"><div><p className="eyebrow">Вопрос {index + 1} из {questions.length}</p><h2>{questions[index].topic}</h2></div><button className="exit-button" onClick={() => setScreen("welcome")}>Выйти</button></div>
-          <div className="progress" aria-label={`Прогресс: ${index + 1} из ${questions.length}`}><span style={{ width: `${((index + 1) / questions.length) * 100}%` }} /></div>
-          <div className="question-layout">
-            <aside className="grade-pill"><strong>{questions[index].grade}</strong><span>класс</span></aside>
-            <article className="question-card">
-              <p className="question-number">Задание {index + 1}</p>
-              <h1>{questions[index].question}</h1>
-              <div className="answers">
-                {questions[index].options.map((option, optionIndex) => <button key={option} className={`answer ${selected === optionIndex ? "selected" : ""}`} onClick={() => choose(optionIndex)}><span>{String.fromCharCode(65 + optionIndex)}</span>{option}</button>)}
-              </div>
-              <div className="question-actions"><button className="back-button" disabled={index === 0} onClick={() => setIndex(index - 1)}>← Назад</button><button className="primary-button" disabled={selected === null} onClick={nextQuestion}>{index === questions.length - 1 ? "Показать результат" : "Дальше →"}</button></div>
-            </article>
-          </div>
-        </section>
-      )}
-
-      {screen === "result" && (
-        <section className="result-shell">
-          <p className="eyebrow">Диагностика завершена</p>
-          <h1>{name ? `${name}, отличный старт!` : "Отличный старт!"}</h1>
-          <p className="result-lead">Верных ответов: <b>{totalCorrect} из {questions.length}</b>. Мы смотрим на устойчивость знаний в каждой ступени.</p>
-          <div className="recommendation"><span>Рекомендуем начать с</span><strong>{recommendation} класса</strong><p>{firstGap ? `Перед переходом дальше полезно укрепить темы ${recommendation} класса.` : "Фундамент устойчивый: можно уверенно работать по программе 4 класса."}</p></div>
-          <div className="result-grid">{scoreByGrade.map((item) => <article key={item.grade} className={item.percent >= 0.75 ? "mastered" : "review"}><div><span>{item.grade} класс</span><b>{item.correct}/{item.total}</b></div><div className="mini-progress"><i style={{ width: `${item.percent * 100}%` }} /></div><p>{item.percent >= 0.75 ? "Освоено уверенно" : "Стоит повторить"}</p></article>)}</div>
-          <button className="primary-button" onClick={restart}>Пройти ещё раз <span>↻</span></button>
-        </section>
-      )}
-    </main>
-  );
+    {screen === "result" && <section className="result-screen"><img src="/junior-robot.png" alt="" /><p>Диагностика завершена</p><h1>Отличная работа!</h1><span>Верных ответов: <b>{totalCorrect} из {questions.length}</b></span><div className="recommendation"><small>РЕКОМЕНДУЕМ НАЧАТЬ С</small><strong>{recommendation} класса</strong><p>{firstGap ? `Полезно повторить ключевые темы ${recommendation} класса.` : "Фундамент устойчивый — можно переходить к следующему уровню."}</p></div><button className="orange-button" onClick={reset}>Вернуться к предметам</button></section>}
+  </main>;
 }
