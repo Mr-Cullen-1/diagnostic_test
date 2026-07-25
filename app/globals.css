@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* A button keeps browser-native vertical centering unless its appearance is reset. */
+.math-card { display:block; appearance:none; -webkit-appearance:none; }
+
 :root { --primary:#fe5b1a; --ink:#111111; --paper:#ffffff; --bg:#f5f5f5; --gray:#ececec; --muted:#737373; --lime:#b5ea2b; }
 * { box-sizing:border-box; }
 html,body { margin:0; min-height:100%; overflow:hidden; }
