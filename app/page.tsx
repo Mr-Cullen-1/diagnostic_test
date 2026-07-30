@@ -85,10 +85,26 @@ const interests: Interest[] = [
 const allInterests = [...educationSubtopics, ...interests];
 
 const posterSlides = [
-  { src: "/poster-math.png", alt: "Matematika" },
-  { src: "/poster-kids-english.png", alt: "Kids English" },
-  { src: "/poster-typing.png", alt: "Typing" },
-  { src: "/poster-english.png", alt: "English" },
+  { src: "/posters/poster-01.png", alt: "Junior IT Academy poster 1" },
+  { src: "/posters/poster-02.png", alt: "Junior IT Academy poster 2" },
+  { src: "/posters/poster-03.png", alt: "Junior IT Academy poster 3" },
+  { src: "/posters/poster-04.png", alt: "Junior IT Academy poster 4" },
+  { src: "/posters/poster-05.png", alt: "Junior IT Academy poster 5" },
+  { src: "/posters/poster-06.png", alt: "Junior IT Academy poster 6" },
+  { src: "/posters/poster-07.png", alt: "Junior IT Academy poster 7" },
+  { src: "/posters/poster-08.png", alt: "Junior IT Academy poster 8" },
+  { src: "/posters/poster-09.png", alt: "Junior IT Academy poster 9" },
+  { src: "/posters/poster-10.png", alt: "Junior IT Academy poster 10" },
+  { src: "/posters/poster-11.png", alt: "Junior IT Academy poster 11" },
+  { src: "/posters/poster-12.png", alt: "Junior IT Academy poster 12" },
+  { src: "/posters/poster-13.png", alt: "Junior IT Academy poster 13" },
+  { src: "/posters/poster-14.png", alt: "Junior IT Academy poster 14" },
+  { src: "/posters/poster-15.png", alt: "Junior IT Academy poster 15" },
+  { src: "/posters/poster-16.png", alt: "Junior IT Academy poster 16" },
+  { src: "/posters/poster-17.png", alt: "Junior IT Academy poster 17" },
+  { src: "/posters/poster-18.png", alt: "Junior IT Academy poster 18" },
+  { src: "/posters/poster-19.png", alt: "Junior IT Academy poster 19" },
+  { src: "/posters/poster-20.png", alt: "Junior IT Academy poster 20" },
 ];
 
 function Header({ locale, setLocale }: { locale: Locale; setLocale: (locale: Locale) => void }) {
