@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import MathDiagnostic from "./math-diagnostic";
+import { mathTestItems58 } from "./math-test-items-5-8";
+import { mathTestItems911 } from "./math-test-items-9-11";
+import { mathTestItems } from "./math-test-items";
 
 type Locale = "ru" | "uz";
 type LocalText = Record<Locale, string>;
 type Course = "math" | "english";
 type Interest = { id: string; label: LocalText };
-type DropdownKind = "education" | "interests";
+type DropdownKind = "interests";
 
 const L = (ru: string, uz: string): LocalText => ({ ru, uz });
 
@@ -58,7 +62,6 @@ const confirmationText = {
 };
 
 const educationLabel = L("Образование", "Ta’lim");
-const subjectsLabel = L("Предметы", "Fanlar");
 
 const educationSubtopics: Interest[] = [
   { id: "history", label: L("История", "Tarix") }, { id: "math", label: L("Математика", "Matematika") },
@@ -78,6 +81,8 @@ const interests: Interest[] = [
   { id: "dancing", label: L("Танцы", "Raqs") }, { id: "gaming", label: L("Игры", "O‘yinlar") },
   { id: "sport", label: L("Спорт", "Sport") }, { id: "business", label: L("Бизнес", "Biznes") },
 ];
+
+const allInterests = [...educationSubtopics, ...interests];
 
 const posterSlides = [
   { src: "/poster-math.png", alt: "Matematika" },
@@ -121,26 +126,28 @@ function Header({ locale, setLocale }: { locale: Locale; setLocale: (locale: Loc
 
 export default function Home() {
   const [locale, setLocale] = useState<Locale>("ru");
-  const [screen, setScreen] = useState<"profile" | "subjects">("profile");
+  const [screen, setScreen] = useState<"profile" | "subjects" | "math-test">("profile");
   const [faqOpen, setFaqOpen] = useState(false);
   const [readyOpen, setReadyOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [interestError, setInterestError] = useState(false);
+  const [gradeError, setGradeError] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<DropdownKind | null>(null);
   const [closingDropdown, setClosingDropdown] = useState<DropdownKind | null>(null);
-  const [educationSearch, setEducationSearch] = useState("");
+  const [gradeDropdownOpen, setGradeDropdownOpen] = useState(false);
+  const [gradeDropdownPlacement, setGradeDropdownPlacement] = useState<"up" | "down">("down");
+  const [gradeDropdownMaxHeight, setGradeDropdownMaxHeight] = useState(280);
   const [interestSearch, setInterestSearch] = useState("");
-  const [dropdownPlacement, setDropdownPlacement] = useState<Record<DropdownKind, "up" | "down">>({ education: "down", interests: "down" });
-  const [dropdownMaxHeight, setDropdownMaxHeight] = useState<Record<DropdownKind, number>>({ education: 280, interests: 280 });
+  const [dropdownPlacement, setDropdownPlacement] = useState<"up" | "down">("down");
+  const [dropdownMaxHeight, setDropdownMaxHeight] = useState(280);
   const [profile, setProfile] = useState({ name: "", age: "", grade: "", interests: [] as string[] });
-  const educationDropdownRef = useRef<HTMLDivElement>(null);
+  const gradeDropdownRef = useRef<HTMLDivElement>(null);
   const interestsDropdownRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const t = text[locale];
   const profileCopy = profileText[locale];
   const readyCopy = confirmationText[locale];
-  const selectedEducation = educationSubtopics.filter((interest) => profile.interests.includes(interest.id));
-  const selectedInterests = interests.filter((interest) => profile.interests.includes(interest.id));
+  const selectedInterests = allInterests.filter((interest) => profile.interests.includes(interest.id));
   const searchPlaceholder = locale === "ru" ? "Поиск" : "Qidirish";
   const noResultsText = locale === "ru" ? "Ничего не найдено" : "Hech narsa topilmadi";
   const split = (value: string) => value.split("\n").map((line, index) => <span key={index}>{line}{index === value.split("\n").length - 1 ? null : <br />}</span>);
@@ -153,22 +160,21 @@ export default function Home() {
     });
   }
 
-  function clearInterestGroup(group: Interest[]) {
-    const ids = new Set(group.map((interest) => interest.id));
+  function clearInterests() {
     setInterestError(false);
-    setProfile((current) => ({ ...current, interests: current.interests.filter((id) => !ids.has(id)) }));
+    setProfile((current) => ({ ...current, interests: [] }));
   }
 
-  function calculateDropdownPosition(kind: DropdownKind) {
-    const element = (kind === "education" ? educationDropdownRef : interestsDropdownRef).current;
+  function calculateDropdownPosition() {
+    const element = interestsDropdownRef.current;
     if (!element) return;
     const rect = element.getBoundingClientRect();
     const below = window.innerHeight - rect.bottom - 12;
     const above = rect.top - 12;
     const placement = below >= above ? "down" : "up";
     const available = placement === "down" ? below : above;
-    setDropdownPlacement((current) => ({ ...current, [kind]: placement }));
-    setDropdownMaxHeight((current) => ({ ...current, [kind]: Math.max(0, Math.min(320, available)) }));
+    setDropdownPlacement(placement);
+    setDropdownMaxHeight(Math.max(0, Math.min(320, available)));
   }
 
   function closeDropdown() {
@@ -178,12 +184,36 @@ export default function Home() {
     closeTimerRef.current = setTimeout(() => { setActiveDropdown(null); setClosingDropdown(null); }, 180);
   }
 
-  function toggleDropdown(kind: DropdownKind) {
-    if (activeDropdown === kind) return closeDropdown();
+  function toggleDropdown() {
+    if (activeDropdown === "interests") return closeDropdown();
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     setClosingDropdown(null);
-    calculateDropdownPosition(kind);
-    setActiveDropdown(kind);
+    calculateDropdownPosition();
+    setActiveDropdown("interests");
+  }
+
+  function selectGrade(grade: number) {
+    setProfile((current) => ({ ...current, grade: String(grade) }));
+    setGradeError(false);
+    setGradeDropdownOpen(false);
+  }
+
+  function calculateGradeDropdownPosition() {
+    const element = gradeDropdownRef.current;
+    if (!element) return;
+    const rect = element.getBoundingClientRect();
+    const below = window.innerHeight - rect.bottom - 12;
+    const above = rect.top - 12;
+    const placement = below >= above ? "down" : "up";
+    const available = placement === "down" ? below : above;
+    setGradeDropdownPlacement(placement);
+    setGradeDropdownMaxHeight(Math.max(0, Math.min(320, available)));
+  }
+
+  function toggleGradeDropdown() {
+    if (gradeDropdownOpen) return setGradeDropdownOpen(false);
+    calculateGradeDropdownPosition();
+    setGradeDropdownOpen(true);
   }
 
   function renderSelectionChips(selected: Interest[], placeholder: string) {
@@ -192,13 +222,23 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (!activeDropdown) return;
+    if (!activeDropdown && !gradeDropdownOpen) return;
     const closeOutside = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (!educationDropdownRef.current?.contains(target) && !interestsDropdownRef.current?.contains(target)) closeDropdown();
+      if (!interestsDropdownRef.current?.contains(target) && !gradeDropdownRef.current?.contains(target)) {
+        closeDropdown();
+        setGradeDropdownOpen(false);
+      }
     };
-    const closeEscape = (event: KeyboardEvent) => { if (event.key === "Escape") closeDropdown(); };
-    const reposition = () => calculateDropdownPosition(activeDropdown);
+    const closeEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      closeDropdown();
+      setGradeDropdownOpen(false);
+    };
+    const reposition = () => {
+      if (activeDropdown) calculateDropdownPosition();
+      if (gradeDropdownOpen) calculateGradeDropdownPosition();
+    };
     document.addEventListener("pointerdown", closeOutside);
     document.addEventListener("keydown", closeEscape);
     window.addEventListener("resize", reposition);
@@ -207,18 +247,24 @@ export default function Home() {
       document.removeEventListener("keydown", closeEscape);
       window.removeEventListener("resize", reposition);
     };
-  }, [activeDropdown]);
+  }, [activeDropdown, gradeDropdownOpen]);
 
   useEffect(() => () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current); }, []);
 
   function submitProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!profile.grade) return setGradeError(true);
     if (profile.interests.length < 3) return setInterestError(true);
     setScreen("subjects");
   }
 
   function selectCourse(course: Course) { setSelectedCourse(course); setReadyOpen(true); }
-  function startDiagnostic() { setReadyOpen(false); }
+  function startDiagnostic() {
+    setReadyOpen(false);
+    if (selectedCourse === "math") setScreen("math-test");
+  }
+
+  const mathTestBank = Number(profile.grade) <= 4 ? mathTestItems : Number(profile.grade) <= 8 ? mathTestItems58 : mathTestItems911;
 
   return <main className={`app-shell screen-${screen}`} lang={locale}>
     <Header locale={locale} setLocale={setLocale} />
@@ -229,18 +275,12 @@ export default function Home() {
         <div className="profile-fields">
           <label className="wide"><span>{profileCopy.name}</span><input required value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} placeholder={profileCopy.namePlaceholder} /></label>
           <label><span>{profileCopy.age}</span><input required inputMode="numeric" value={profile.age} onChange={(event) => setProfile({ ...profile, age: event.target.value })} placeholder={profileCopy.agePlaceholder} /></label>
-          <label><span>{profileCopy.classLabel}</span><select required value={profile.grade} onChange={(event) => setProfile({ ...profile, grade: event.target.value })}><option value="" disabled>{profileCopy.classPlaceholder}</option>{Array.from({ length: 11 }, (_, index) => index + 1).map((grade) => <option key={grade} value={grade}>{grade} {t.class}</option>)}</select></label>
+          <div className="profile-field"><span>{profileCopy.classLabel}</span><div ref={gradeDropdownRef} className={`interests-dropdown grade-dropdown ${gradeDropdownOpen ? `open ${gradeDropdownPlacement}` : ""} ${gradeError ? "has-error" : ""}`}><button className="interests-trigger grade-trigger" type="button" aria-expanded={gradeDropdownOpen} onClick={toggleGradeDropdown}><span className={profile.grade ? "" : "interest-placeholder"}>{profile.grade ? `${profile.grade} ${t.class}` : profileCopy.classPlaceholder}</span><i>⌄</i></button>{gradeDropdownOpen && <div className={`interests-menu grade-menu ${gradeDropdownPlacement}`} style={{ maxHeight: gradeDropdownMaxHeight }} role="listbox" aria-label={profileCopy.classLabel}>{Array.from({ length: 11 }, (_, index) => index + 1).map((grade) => <button key={grade} className={`grade-option ${profile.grade === String(grade) ? "selected" : ""}`} type="button" role="option" aria-selected={profile.grade === String(grade)} onClick={() => selectGrade(grade)}>{grade} {t.class}</button>)}</div>}</div></div>
           <fieldset className={`interests-field ${interestError ? "has-error" : ""}`}>
-            <div className="interests-heading"><legend>{profileCopy.interestsTitle}</legend></div>
-            <div ref={educationDropdownRef} className={`interests-dropdown ${activeDropdown === "education" ? `open ${dropdownPlacement.education}` : ""}`}>
-              <span className="interest-field-label">{educationLabel[locale]}</span>
-              <div className="interest-select-control"><button className="interests-trigger" type="button" aria-expanded={activeDropdown === "education"} onClick={() => toggleDropdown("education")}>{renderSelectionChips(selectedEducation, subjectsLabel[locale])}<i>⌄</i></button>{selectedEducation.length > 0 && <button className="interests-clear" type="button" aria-label={locale === "ru" ? "Очистить образование" : "Ta’limni tozalash"} onClick={() => clearInterestGroup(educationSubtopics)}>×</button>}</div>
-              {activeDropdown === "education" && <div className={`interests-menu ${dropdownPlacement.education} ${closingDropdown === "education" ? "closing" : ""}`} style={{ maxHeight: dropdownMaxHeight.education }} role="listbox" aria-multiselectable="true"><label className="interest-search"><input autoFocus type="search" value={educationSearch} onChange={(event) => setEducationSearch(event.target.value)} placeholder={searchPlaceholder} /></label><div className="interest-list">{educationSubtopics.filter((interest) => interest.label[locale].toLocaleLowerCase().includes(educationSearch.trim().toLocaleLowerCase())).map((interest) => <label key={interest.id} className={profile.interests.includes(interest.id) ? "selected" : ""}><input type="checkbox" checked={profile.interests.includes(interest.id)} onChange={() => toggleInterest(interest.id)} /><span>{interest.label[locale]}</span></label>)}{!educationSubtopics.some((interest) => interest.label[locale].toLocaleLowerCase().includes(educationSearch.trim().toLocaleLowerCase())) && <p className="interest-no-results">{noResultsText}</p>}</div></div>}
-            </div>
-            <div ref={interestsDropdownRef} className={`interests-dropdown ${activeDropdown === "interests" ? `open ${dropdownPlacement.interests}` : ""}`}>
-              <span className="interest-field-label">{profileCopy.interests}</span>
-              <div className="interest-select-control"><button className="interests-trigger" type="button" aria-expanded={activeDropdown === "interests"} onClick={() => toggleDropdown("interests")}>{renderSelectionChips(selectedInterests, profileCopy.interestsHint)}<i>⌄</i></button>{selectedInterests.length > 0 && <button className="interests-clear" type="button" aria-label={locale === "ru" ? "Очистить интересы" : "Qiziqishlarni tozalash"} onClick={() => clearInterestGroup(interests)}>×</button>}</div>
-              {activeDropdown === "interests" && <div className={`interests-menu ${dropdownPlacement.interests} ${closingDropdown === "interests" ? "closing" : ""}`} style={{ maxHeight: dropdownMaxHeight.interests }} role="listbox" aria-multiselectable="true"><label className="interest-search"><input autoFocus type="search" value={interestSearch} onChange={(event) => setInterestSearch(event.target.value)} placeholder={searchPlaceholder} /></label><div className="interest-list">{interests.filter((interest) => interest.label[locale].toLocaleLowerCase().includes(interestSearch.trim().toLocaleLowerCase())).map((interest) => <label key={interest.id} className={profile.interests.includes(interest.id) ? "selected" : ""}><input type="checkbox" checked={profile.interests.includes(interest.id)} onChange={() => toggleInterest(interest.id)} /><span>{interest.label[locale]}</span></label>)}{!interests.some((interest) => interest.label[locale].toLocaleLowerCase().includes(interestSearch.trim().toLocaleLowerCase())) && <p className="interest-no-results">{noResultsText}</p>}</div></div>}
+            <div className="interests-heading"><legend>{profileCopy.interests}</legend></div>
+            <div ref={interestsDropdownRef} className={`interests-dropdown ${activeDropdown === "interests" ? `open ${dropdownPlacement}` : ""}`}>
+              <div className="interest-select-control"><button className="interests-trigger" type="button" aria-expanded={activeDropdown === "interests"} onClick={toggleDropdown}>{renderSelectionChips(selectedInterests, profileCopy.interestsHint)}<i>⌄</i></button>{selectedInterests.length > 0 && <button className="interests-clear" type="button" aria-label={profileCopy.interests} onClick={clearInterests}>×</button>}</div>
+              {activeDropdown === "interests" && <div className={`interests-menu ${dropdownPlacement} ${closingDropdown === "interests" ? "closing" : ""}`} style={{ maxHeight: dropdownMaxHeight }} role="listbox" aria-multiselectable="true"><label className="interest-search"><input autoFocus type="search" value={interestSearch} onChange={(event) => setInterestSearch(event.target.value)} placeholder={searchPlaceholder} /></label><p className="interest-list-label">{educationLabel[locale]}</p><div className="interest-list">{educationSubtopics.filter((interest) => interest.label[locale].toLocaleLowerCase().includes(interestSearch.trim().toLocaleLowerCase())).map((interest) => <label key={interest.id} className={profile.interests.includes(interest.id) ? "selected" : ""}><input type="checkbox" checked={profile.interests.includes(interest.id)} onChange={() => toggleInterest(interest.id)} /><span>{interest.label[locale]}</span></label>)}</div><p className="interest-list-label">{profileCopy.interests}</p><div className="interest-list">{interests.filter((interest) => interest.label[locale].toLocaleLowerCase().includes(interestSearch.trim().toLocaleLowerCase())).map((interest) => <label key={interest.id} className={profile.interests.includes(interest.id) ? "selected" : ""}><input type="checkbox" checked={profile.interests.includes(interest.id)} onChange={() => toggleInterest(interest.id)} /><span>{interest.label[locale]}</span></label>)}</div>{!allInterests.some((interest) => interest.label[locale].toLocaleLowerCase().includes(interestSearch.trim().toLocaleLowerCase())) && <p className="interest-no-results">{noResultsText}</p>}</div>}
             </div>
             {interestError && <p className="interest-error" role="alert">{profileCopy.error}</p>}
           </fieldset>
@@ -256,6 +296,7 @@ export default function Home() {
       </aside>
     </section>}
     {screen === "subjects" && <section className="subject-screen"><button className="back-link profile-return" type="button" onClick={() => setScreen("profile")}>← {profileCopy.backToProfile}</button><div className="subject-intro"><p>{t.level}</p><h1>{t.learn}<br />{t.youKnow} <i>{t.can}</i></h1><span>{t.choose}</span></div><div className="subject-cards"><article className="subject-card math-card"><div className="card-content"><h2>{t.math}</h2><p>{split(t.mathDesc)}</p></div><span className="robot-bubble">2 + 2 = 4</span><button className="start-test" type="button" onClick={() => selectCourse("math")}>{t.start} <em>→</em></button><img className="card-robot" src="/junior-robot.png" alt="Робот Junior" /></article><article className="subject-card english-card"><div className="card-content"><h2>{split(t.english)}</h2><p>{split(t.englishDesc)}</p></div><span className="robot-bubble">Hello!</span><button className="start-test" type="button" onClick={() => selectCourse("english")}>{t.start} <em>→</em></button><img className="card-robot" src="/junior-robot.png" alt="Робот Junior" /></article></div></section>}
+    {screen === "math-test" && <MathDiagnostic locale={locale} itemBank={mathTestBank} onBack={() => setScreen("subjects")} />}
     {readyOpen && <div className="ready-overlay" role="dialog" aria-modal="true" aria-labelledby="ready-title"><section className="ready-dialog"><p>{readyCopy.eyebrow}</p><h2 id="ready-title">{readyCopy.title}</h2><span>{readyCopy.description}</span>{selectedCourse && <strong className="selected-course">{selectedCourse === "math" ? t.math : t.english.replace("\n", " ")}</strong>}<div className="ready-actions"><button className="text-button" type="button" onClick={() => setReadyOpen(false)}>{readyCopy.edit}</button><button className="orange-button pending-start" type="button" onClick={startDiagnostic}>{readyCopy.start}</button></div></section></div>}
     {faqOpen && <div className="faq-overlay" role="dialog" aria-modal="true" aria-labelledby="faq-title" onClick={() => setFaqOpen(false)}><section className="faq-dialog" onClick={(event) => event.stopPropagation()}><button className="faq-close" type="button" aria-label={t.close} onClick={() => setFaqOpen(false)}>×</button><img src="/junior-robot.png" alt="" /><p>{t.faqHelp}</p><h2 id="faq-title">{t.faq}</h2><div className="faq-list"><article><b>{t.faq1}</b><span>{t.faq1a}</span></article><article><b>{t.faq2}</b><span>{t.faq2a}</span></article><article><b>{t.faq3}</b><span>{t.faq3a}</span></article></div></section></div>}
     <button className="faq-button" type="button" aria-label={t.faq} onClick={() => setFaqOpen(true)}><img src="/faq-robot.png" alt="" /></button>
