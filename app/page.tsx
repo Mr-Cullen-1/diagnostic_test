@@ -13,6 +13,8 @@ type LocalText = Record<Locale, string>;
 type Course = "math" | "english";
 type Interest = { id: string; label: LocalText };
 type DropdownKind = "interests";
+const MIN_INTERESTS = 3;
+const MAX_INTERESTS = 5;
 
 const L = (ru: string, uz: string): LocalText => ({ ru, uz });
 
@@ -32,7 +34,7 @@ const text = {
     level: "Yo‘nalishni tanlash", learn: "O‘rganmoqchi", youKnow: "bo‘lgan", can: "kursingizni tanlang",
     choose: "Anketangizni saqlaymiz va Junior jamoasiga sizga mos kursni tanlashga yordam beramiz.",
     math: "Matematika", mathDesc: "Misollarni yeching\nva darajangizni biling.",
-    english: "Ingliz\ntili", englishDesc: "Ingliz tili bo‘yicha\ndarajangizni aniqlang.",
+    english: "Ingliz tili", englishDesc: "Ingliz tili bo‘yicha\ndarajangizni aniqlang.",
     start: "Testni boshlash", chooseCourse: "Kursni tanlash", class: "sinf", close: "Yopish",
     faqHelp: "Yordam kerakmi?", faq: "Ko‘p so‘raladigan savollar", faq1: "Anketa nima uchun kerak?",
     faq1a: "U Junior jamoasiga o‘quvchining qiziqishlarini yaxshiroq bilishga yordam beradi.", faq2: "Kursni kim tavsiya qiladi?",
@@ -44,17 +46,17 @@ const text = {
 const profileText = {
   ru: {
     eyebrow: "Анкета ученика", robot: "Junior говорит", title: "Расскажи о себе",
-    description: "Выбери минимум три интереса — так нашей команде будет проще понять, что тебе нравится.",
+    description: "Выбери от трёх до пяти интересов — так нашей команде будет проще понять, что тебе нравится.",
     name: "Имя и фамилия", namePlaceholder: "Например, Азиза Каримова", age: "Возраст", agePlaceholder: "Например, 9",
-    classLabel: "Класс", classPlaceholder: "Выбери класс", interests: "Интересы", interestsTitle: "Что тебе нравится? Выбери как минимум 3", interestsHint: "Выбери не меньше 3",
-    error: "Выбери ещё интересы: нужно минимум 3.", continue: "Продолжить", backToProfile: "Назад к анкете",
+    classLabel: "Класс", classPlaceholder: "Выбери класс", interests: "Интересы", interestsTitle: "Что тебе нравится? Выбери от 3 до 5", interestsHint: "Выбери от 3 до 5",
+    error: "Выбери от 3 до 5 интересов.", continue: "Продолжить", backToProfile: "Назад к анкете",
   },
   uz: {
     eyebrow: "O‘quvchi anketasi", robot: "Junior gapiryapti", title: "O‘zing haqingda aytib ber",
-    description: "Kamida uchta qiziqishni tanlang — shunda jamoamiz sizga nimalar yoqishini yaxshiroq tushunadi.",
+    description: "3 tadan 5 tagacha qiziqishni tanlang — shunda jamoamiz sizga nimalar yoqishini yaxshiroq tushunadi.",
     name: "Ism va familiya", namePlaceholder: "Masalan, Aziza Karimova", age: "Yosh", agePlaceholder: "Masalan, 9",
-    classLabel: "Sinf", classPlaceholder: "Sinfni tanlang", interests: "Qiziqishlar", interestsTitle: "Senga nima yoqadi? Kamida 3 tasini tanla", interestsHint: "Kamida 3 tasini tanlang",
-    error: "Yana qiziqishlarni tanlang: kamida 3 ta bo‘lishi kerak.", continue: "Davom etish", backToProfile: "Anketaga qaytish",
+    classLabel: "Sinf", classPlaceholder: "Sinfni tanlang", interests: "Qiziqishlar", interestsTitle: "Senga nima yoqadi? 3 tadan 5 tagacha tanla", interestsHint: "3 tadan 5 tagacha tanlang",
+    error: "3 tadan 5 tagacha qiziqishni tanlang.", continue: "Davom etish", backToProfile: "Anketaga qaytish",
   },
 };
 
@@ -172,8 +174,10 @@ export default function Home() {
 
   function toggleInterest(id: string) {
     setProfile((current) => {
-      const nextInterests = current.interests.includes(id) ? current.interests.filter((item) => item !== id) : [...current.interests, id];
-      if (nextInterests.length >= 3) setInterestError(false);
+      const isSelected = current.interests.includes(id);
+      if (!isSelected && current.interests.length >= MAX_INTERESTS) return current;
+      const nextInterests = isSelected ? current.interests.filter((item) => item !== id) : [...current.interests, id];
+      if (nextInterests.length >= MIN_INTERESTS) setInterestError(false);
       return { ...current, interests: nextInterests };
     });
   }
@@ -272,7 +276,7 @@ export default function Home() {
   function submitProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!profile.grade) return setGradeError(true);
-    if (profile.interests.length < 3) return setInterestError(true);
+    if (profile.interests.length < MIN_INTERESTS || profile.interests.length > MAX_INTERESTS) return setInterestError(true);
     setScreen("subjects");
   }
 
@@ -299,7 +303,7 @@ export default function Home() {
             <div className="interests-heading"><legend>{profileCopy.interests}</legend></div>
             <div ref={interestsDropdownRef} className={`interests-dropdown ${activeDropdown === "interests" ? `open ${dropdownPlacement}` : ""}`}>
               <div className="interest-select-control"><button className="interests-trigger" type="button" aria-expanded={activeDropdown === "interests"} onClick={toggleDropdown}>{renderSelectionChips(selectedInterests, profileCopy.interestsHint)}<i>⌄</i></button>{selectedInterests.length > 0 && <button className="interests-clear" type="button" aria-label={profileCopy.interests} onClick={clearInterests}>×</button>}</div>
-              {activeDropdown === "interests" && <div className={`interests-menu ${dropdownPlacement} ${closingDropdown === "interests" ? "closing" : ""}`} style={{ maxHeight: dropdownMaxHeight }} role="listbox" aria-multiselectable="true"><label className="interest-search"><input autoFocus type="search" value={interestSearch} onChange={(event) => setInterestSearch(event.target.value)} placeholder={searchPlaceholder} /></label><p className="interest-list-label">{educationLabel[locale]}</p><div className="interest-list">{educationSubtopics.filter((interest) => interest.label[locale].toLocaleLowerCase().includes(interestSearch.trim().toLocaleLowerCase())).map((interest) => <label key={interest.id} className={profile.interests.includes(interest.id) ? "selected" : ""}><input type="checkbox" checked={profile.interests.includes(interest.id)} onChange={() => toggleInterest(interest.id)} /><span>{interest.label[locale]}</span></label>)}</div><p className="interest-list-label">{profileCopy.interests}</p><div className="interest-list">{interests.filter((interest) => interest.label[locale].toLocaleLowerCase().includes(interestSearch.trim().toLocaleLowerCase())).map((interest) => <label key={interest.id} className={profile.interests.includes(interest.id) ? "selected" : ""}><input type="checkbox" checked={profile.interests.includes(interest.id)} onChange={() => toggleInterest(interest.id)} /><span>{interest.label[locale]}</span></label>)}</div>{!allInterests.some((interest) => interest.label[locale].toLocaleLowerCase().includes(interestSearch.trim().toLocaleLowerCase())) && <p className="interest-no-results">{noResultsText}</p>}</div>}
+              {activeDropdown === "interests" && <div className={`interests-menu ${dropdownPlacement} ${closingDropdown === "interests" ? "closing" : ""}`} style={{ maxHeight: dropdownMaxHeight }} role="listbox" aria-multiselectable="true"><label className="interest-search"><input autoFocus type="search" value={interestSearch} onChange={(event) => setInterestSearch(event.target.value)} placeholder={searchPlaceholder} /></label><p className="interest-list-label">{educationLabel[locale]}</p><div className="interest-list">{educationSubtopics.filter((interest) => interest.label[locale].toLocaleLowerCase().includes(interestSearch.trim().toLocaleLowerCase())).map((interest) => { const isSelected = profile.interests.includes(interest.id); return <label key={interest.id} className={isSelected ? "selected" : ""}><input type="checkbox" checked={isSelected} disabled={!isSelected && profile.interests.length >= MAX_INTERESTS} onChange={() => toggleInterest(interest.id)} /><span>{interest.label[locale]}</span></label>; })}</div><p className="interest-list-label">{profileCopy.interests}</p><div className="interest-list">{interests.filter((interest) => interest.label[locale].toLocaleLowerCase().includes(interestSearch.trim().toLocaleLowerCase())).map((interest) => { const isSelected = profile.interests.includes(interest.id); return <label key={interest.id} className={isSelected ? "selected" : ""}><input type="checkbox" checked={isSelected} disabled={!isSelected && profile.interests.length >= MAX_INTERESTS} onChange={() => toggleInterest(interest.id)} /><span>{interest.label[locale]}</span></label>; })}</div>{!allInterests.some((interest) => interest.label[locale].toLocaleLowerCase().includes(interestSearch.trim().toLocaleLowerCase())) && <p className="interest-no-results">{noResultsText}</p>}</div>}
             </div>
             {interestError && <p className="interest-error" role="alert">{profileCopy.error}</p>}
           </fieldset>
@@ -316,7 +320,7 @@ export default function Home() {
     </section>}
     {screen === "subjects" && <section className="subject-screen"><button className="back-link profile-return" type="button" onClick={() => setScreen("profile")}>← {profileCopy.backToProfile}</button><div className="subject-intro"><p>{t.level}</p><h1>{t.learn}<br />{t.youKnow} <i>{t.can}</i></h1><span>{t.choose}</span></div><div className="subject-cards"><article className="subject-card math-card"><div className="card-content"><h2>{t.math}</h2><p>{split(t.mathDesc)}</p></div><span className="robot-bubble">2 + 2 = 4</span><button className="start-test" type="button" onClick={() => selectCourse("math")}>{t.start} <em>→</em></button><img className="card-robot" src="/junior-robot.png" alt="Робот Junior" /></article><article className="subject-card english-card"><div className="card-content"><h2>{split(t.english)}</h2><p>{split(t.englishDesc)}</p></div><span className="robot-bubble">Hello!</span><button className="start-test" type="button" onClick={() => selectCourse("english")}>{t.start} <em>→</em></button><img className="card-robot" src="/junior-robot.png" alt="Робот Junior" /></article></div></section>}
     {screen === "math-test" && <MathDiagnostic locale={locale} itemBank={mathTestBank} onBack={() => setScreen("subjects")} onHome={() => setScreen("profile")} />}
-    {screen === "english-test" && <EnglishDiagnostic locale={locale} studentAge={Number(profile.age)} onBack={() => setScreen("subjects")} onHome={() => setScreen("subjects")} />}
+    {screen === "english-test" && <EnglishDiagnostic locale={locale} studentAge={Number(profile.age)} onHome={() => setScreen("subjects")} />}
     {readyOpen && <div className="ready-overlay" role="dialog" aria-modal="true" aria-labelledby="ready-title"><section className="ready-dialog"><p>{readyCopy.eyebrow}</p><h2 id="ready-title">{readyCopy.title}</h2><span>{readyCopy.description}</span>{selectedCourse && <strong className="selected-course">{selectedCourse === "math" ? t.math : t.english.replace("\n", " ")}</strong>}<div className="ready-actions"><PlatformButton variant="secondary" onClick={() => setReadyOpen(false)}>{readyCopy.edit}</PlatformButton><PlatformButton className="pending-start" onClick={startDiagnostic}>{readyCopy.start}</PlatformButton></div></section></div>}
     {faqOpen && <div className="faq-overlay" role="dialog" aria-modal="true" aria-labelledby="faq-title" onClick={() => setFaqOpen(false)}><section className="faq-dialog" onClick={(event) => event.stopPropagation()}><button className="faq-close" type="button" aria-label={t.close} onClick={() => setFaqOpen(false)}>×</button><img src="/junior-robot.png" alt="" /><p>{t.faqHelp}</p><h2 id="faq-title">{t.faq}</h2><div className="faq-list"><article><b>{t.faq1}</b><span>{t.faq1a}</span></article><article><b>{t.faq2}</b><span>{t.faq2a}</span></article><article><b>{t.faq3}</b><span>{t.faq3a}</span></article></div></section></div>}
     <button className="faq-button" type="button" aria-label={t.faq} onClick={() => setFaqOpen(true)}><img src="/faq-robot.png" alt="" /></button>

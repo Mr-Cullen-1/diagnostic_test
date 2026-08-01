@@ -73,9 +73,11 @@ const copy = {
     introNote: "Уровень и школьный класс выбирать не нужно — система определит точку старта по ответам.",
     start: "Начать тест",
     resume: "Продолжить тест",
-    exit: "Выйти",
-    exitHint: "Прогресс сохранится, но незавершённый тест не покажет уровень.",
-    part: "Часть",
+    exit: "Завершить тест",
+    exitHint: "Все незаданные задания будут засчитаны как неверные, после чего появится результат.",
+    exitConfirmTitle: "Завершить тест?",
+    cancel: "Продолжить тест",
+    part: "Блок",
     ofParts: "из 3",
     question: "Задание",
     ofQuestions: "из 40",
@@ -130,12 +132,14 @@ const copy = {
     introNote: "Daraja va maktab sinfini tanlash shart emas — tizim boshlash nuqtasini javoblar asosida aniqlaydi.",
     start: "Testni boshlash",
     resume: "Testni davom ettirish",
-    exit: "Chiqish",
-    exitHint: "Jarayon saqlanadi, lekin tugallanmagan test darajani ko‘rsatmaydi.",
-    part: "Qism",
-    ofParts: "3 dan",
+    exit: "Testni yakunlash",
+    exitHint: "Javob berilmagan barcha topshiriqlar noto‘g‘ri deb hisoblanadi, so‘ng natija ko‘rsatiladi.",
+    exitConfirmTitle: "Testni yakunlaysizmi?",
+    cancel: "Testni davom ettirish",
+    part: "Blok",
+    ofParts: "/ 3",
     question: "Topshiriq",
-    ofQuestions: "40 dan",
+    ofQuestions: "/ 40",
     parts: {
       start: "Boshlang‘ich tekshiruv",
       adaptive: "Moslashuvchan tekshiruv",
@@ -911,8 +915,7 @@ export default function EnglishDiagnostic({
   storageKey = "english-placement-v3",
   attemptSeed = undefined,
   itemBank = englishPlacementItems,
-  onBack = () => {},
-  onHome = onBack,
+  onHome = () => {},
   onProgress = undefined,
   onComplete = undefined,
 }) {
@@ -933,6 +936,7 @@ export default function EnglishDiagnostic({
   const [sequenceDraft, setSequenceDraft] = useState([]);
   const [message, setMessage] = useState("");
   const [soundProblemOpen, setSoundProblemOpen] = useState(false);
+  const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
   const questionStartedAtRef = useRef(0);
   const completionReportedRef = useRef(false);
   const messageTimerRef = useRef(null);
@@ -1013,13 +1017,51 @@ export default function EnglishDiagnostic({
     setSession(createInitialSession(attemptSeed ?? Date.now()));
   }
 
+  function completeExitedSession() {
+    let nextSession = session;
+    let skippedCount = 0;
+
+    while (nextSession.phase !== "result" && skippedCount < PLACEMENT_TOTAL) {
+      const nextItem = itemMap.get(nextSession.queue[nextSession.currentIndex]);
+      if (!nextItem) {
+        throw new Error("English Placement cannot finish because the current item is missing.");
+      }
+
+      const skippedResponse = buildResponse({
+        session: nextSession,
+        item: nextItem,
+        answer: null,
+        correct: false,
+        skipped: true,
+        answerTimeMs: 0,
+      });
+      nextSession = advanceSession({
+        session: nextSession,
+        response: skippedResponse,
+        itemBank,
+        studentAge,
+      });
+      skippedCount += 1;
+    }
+
+    if (nextSession.phase !== "result") {
+      throw new Error("English Placement did not reach a final result after exit.");
+    }
+
+    return nextSession;
+  }
+
   function exitTest() {
+    setExitConfirmationOpen(false);
+    const completedSession = completeExitedSession();
+    resetAnswerDrafts();
+    completionReportedRef.current = false;
+    setSession(completedSession);
     onProgress?.({
-      status: "incomplete",
-      answeredCount: session.responses.length,
-      responses: session.responses,
+      status: "complete",
+      answeredCount: completedSession.responses.length,
+      responses: completedSession.responses,
     });
-    onBack?.();
   }
 
   function playSpeech(text, { test = false } = {}) {
@@ -1291,17 +1333,21 @@ export default function EnglishDiagnostic({
   return (
     <section className="math-diagnostic-screen english-placement-screen">
       <div className="diagnostic-shell">
-        <PlatformButton className="finish-test-button" onClick={exitTest} title={t.exitHint}>
+        <PlatformButton
+          className="finish-test-button"
+          onClick={() => setExitConfirmationOpen(true)}
+          title={t.exitHint}
+        >
           {t.exit}
         </PlatformButton>
 
         <aside className="diagnostic-side">
-          <p>{t.eyebrow}</p>
+          <p className="diagnostic-eyebrow">{t.eyebrow}</p>
           <h1>
             {t.part} <b>{partNumber}</b> {t.ofParts}
           </h1>
           <strong>{t.parts[session.phase]}</strong>
-          <p>
+          <p className="diagnostic-question-count">
             {t.question} {questionNumber} {t.ofQuestions}
           </p>
           <div className="diagnostic-progress">
@@ -1471,6 +1517,22 @@ export default function EnglishDiagnostic({
                 <PlatformButton onClick={continueWithAudioError}>
                   {t.continueWithError}
                 </PlatformButton>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {exitConfirmationOpen && (
+          <div className="finish-overlay" role="dialog" aria-modal="true" aria-labelledby="finish-test-title">
+            <section className="finish-dialog">
+              <p>{t.exit}</p>
+              <h2 id="finish-test-title">{t.exitConfirmTitle}</h2>
+              <span>{t.exitHint}</span>
+              <div>
+                <PlatformButton variant="secondary" onClick={() => setExitConfirmationOpen(false)}>
+                  {t.cancel}
+                </PlatformButton>
+                <PlatformButton onClick={exitTest}>{t.exit}</PlatformButton>
               </div>
             </section>
           </div>
