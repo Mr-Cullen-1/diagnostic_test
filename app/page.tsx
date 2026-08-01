@@ -5,6 +5,8 @@ import MathDiagnostic from "./math-diagnostic";
 import { mathTestItems58 } from "./math-test-items-5-8";
 import { mathTestItems911 } from "./math-test-items-9-11";
 import { mathTestItems } from "./math-test-items";
+import EnglishDiagnostic from "./english-diagnostic(1)";
+import PlatformButton from "./platform-button";
 
 type Locale = "ru" | "uz";
 type LocalText = Record<Locale, string>;
@@ -142,7 +144,7 @@ function Header({ locale, setLocale }: { locale: Locale; setLocale: (locale: Loc
 
 export default function Home() {
   const [locale, setLocale] = useState<Locale>("ru");
-  const [screen, setScreen] = useState<"profile" | "subjects" | "math-test">("profile");
+  const [screen, setScreen] = useState<"profile" | "subjects" | "math-test" | "english-test">("profile");
   const [faqOpen, setFaqOpen] = useState(false);
   const [readyOpen, setReadyOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -278,6 +280,7 @@ export default function Home() {
   function startDiagnostic() {
     setReadyOpen(false);
     if (selectedCourse === "math") setScreen("math-test");
+    if (selectedCourse === "english") setScreen("english-test");
   }
 
   const mathTestBank = Number(profile.grade) <= 4 ? mathTestItems : Number(profile.grade) <= 8 ? mathTestItems58 : mathTestItems911;
@@ -301,7 +304,7 @@ export default function Home() {
             {interestError && <p className="interest-error" role="alert">{profileCopy.error}</p>}
           </fieldset>
         </div>
-        <button className="orange-button profile-submit" type="submit">{profileCopy.continue} →</button>
+        <PlatformButton className="profile-submit" type="submit">{profileCopy.continue} →</PlatformButton>
       </form>
       <aside className="poster-carousel" aria-label="Junior IT Academy courses">
         <div className="poster-viewport">
@@ -313,7 +316,8 @@ export default function Home() {
     </section>}
     {screen === "subjects" && <section className="subject-screen"><button className="back-link profile-return" type="button" onClick={() => setScreen("profile")}>← {profileCopy.backToProfile}</button><div className="subject-intro"><p>{t.level}</p><h1>{t.learn}<br />{t.youKnow} <i>{t.can}</i></h1><span>{t.choose}</span></div><div className="subject-cards"><article className="subject-card math-card"><div className="card-content"><h2>{t.math}</h2><p>{split(t.mathDesc)}</p></div><span className="robot-bubble">2 + 2 = 4</span><button className="start-test" type="button" onClick={() => selectCourse("math")}>{t.start} <em>→</em></button><img className="card-robot" src="/junior-robot.png" alt="Робот Junior" /></article><article className="subject-card english-card"><div className="card-content"><h2>{split(t.english)}</h2><p>{split(t.englishDesc)}</p></div><span className="robot-bubble">Hello!</span><button className="start-test" type="button" onClick={() => selectCourse("english")}>{t.start} <em>→</em></button><img className="card-robot" src="/junior-robot.png" alt="Робот Junior" /></article></div></section>}
     {screen === "math-test" && <MathDiagnostic locale={locale} itemBank={mathTestBank} onBack={() => setScreen("subjects")} onHome={() => setScreen("profile")} />}
-    {readyOpen && <div className="ready-overlay" role="dialog" aria-modal="true" aria-labelledby="ready-title"><section className="ready-dialog"><p>{readyCopy.eyebrow}</p><h2 id="ready-title">{readyCopy.title}</h2><span>{readyCopy.description}</span>{selectedCourse && <strong className="selected-course">{selectedCourse === "math" ? t.math : t.english.replace("\n", " ")}</strong>}<div className="ready-actions"><button className="text-button" type="button" onClick={() => setReadyOpen(false)}>{readyCopy.edit}</button><button className="orange-button pending-start" type="button" onClick={startDiagnostic}>{readyCopy.start}</button></div></section></div>}
+    {screen === "english-test" && <EnglishDiagnostic locale={locale} studentAge={Number(profile.age)} onBack={() => setScreen("subjects")} onHome={() => setScreen("subjects")} />}
+    {readyOpen && <div className="ready-overlay" role="dialog" aria-modal="true" aria-labelledby="ready-title"><section className="ready-dialog"><p>{readyCopy.eyebrow}</p><h2 id="ready-title">{readyCopy.title}</h2><span>{readyCopy.description}</span>{selectedCourse && <strong className="selected-course">{selectedCourse === "math" ? t.math : t.english.replace("\n", " ")}</strong>}<div className="ready-actions"><PlatformButton variant="secondary" onClick={() => setReadyOpen(false)}>{readyCopy.edit}</PlatformButton><PlatformButton className="pending-start" onClick={startDiagnostic}>{readyCopy.start}</PlatformButton></div></section></div>}
     {faqOpen && <div className="faq-overlay" role="dialog" aria-modal="true" aria-labelledby="faq-title" onClick={() => setFaqOpen(false)}><section className="faq-dialog" onClick={(event) => event.stopPropagation()}><button className="faq-close" type="button" aria-label={t.close} onClick={() => setFaqOpen(false)}>×</button><img src="/junior-robot.png" alt="" /><p>{t.faqHelp}</p><h2 id="faq-title">{t.faq}</h2><div className="faq-list"><article><b>{t.faq1}</b><span>{t.faq1a}</span></article><article><b>{t.faq2}</b><span>{t.faq2a}</span></article><article><b>{t.faq3}</b><span>{t.faq3a}</span></article></div></section></div>}
     <button className="faq-button" type="button" aria-label={t.faq} onClick={() => setFaqOpen(true)}><img src="/faq-robot.png" alt="" /></button>
   </main>;

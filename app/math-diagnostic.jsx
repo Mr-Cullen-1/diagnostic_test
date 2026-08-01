@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { domainNames, localText, mathTestItems } from "./math-test-items";
+import PlatformButton from "./platform-button";
 
 const copy = {
   ru: {
@@ -147,7 +148,7 @@ export default function MathDiagnostic({ locale, onBack, onHome = onBack, itemBa
         <p className="result-score">{t.score.replace("{score}", score).replace("{total}", itemBank.length)}</p>
         <div className="result-columns"><article><h2>{t.strong}</h2>{strengths.length ? strengths.map((stat) => <p key={stat.domain}>✓ {localText(domainNames[stat.domain], locale)}</p>) : <p>{t.noStrong}</p>}</article><article><h2>{t.improve}</h2>{improvements.length ? improvements.map((stat) => <p key={stat.domain}>• {localText(domainNames[stat.domain], locale)}</p>) : <p>{t.noImprove}</p>}</article></div>
         <p className="result-note">{t.confidence}</p>
-        <div className="diagnostic-actions"><button type="button" className="text-button" onClick={onHome}>{t.again}</button><button type="button" className="orange-button" onClick={onBack}>{t.courses}</button></div>
+        <div className="diagnostic-actions"><PlatformButton variant="secondary" onClick={onHome}>{t.again}</PlatformButton><PlatformButton onClick={onBack}>{t.courses}</PlatformButton></div>
       </div>
     </section>;
   }
@@ -156,7 +157,7 @@ export default function MathDiagnostic({ locale, onBack, onHome = onBack, itemBa
   const skill = localText(currentItem.skill, locale);
   return <section className="math-diagnostic-screen">
     <div className="diagnostic-shell">
-      <button className="finish-test-button" type="button" onClick={() => setFinishConfirmOpen(true)}>{finish.button}</button>
+      <PlatformButton className="finish-test-button" onClick={() => setFinishConfirmOpen(true)}>{finish.button}</PlatformButton>
       <aside className="diagnostic-side"><p>{t.eyebrow}</p><h1>{t.progress} <b>{progress}</b> {t.of} {itemBank.length}</h1><div className="diagnostic-progress"><span style={{ width: `${(progress / itemBank.length) * 100}%` }} /></div><img src="/robot-form.png" alt="" /></aside>
       <article className="diagnostic-card"><div className="skill-tag"><span>{t.skill}</span>{skill}</div><h2>{itemPrompt}</h2>
         {currentItem.type === "number" && <div className="number-task"><p>{t.keypad}</p><div className="number-answer" aria-live="polite">{numberDraft || "—"}</div><div className="number-keypad">{[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((digit) => <button key={digit} type="button" onClick={() => setNumberDraft((draft) => draft.length < 6 ? `${draft}${digit}` : draft)}>{digit}</button>)}<button type="button" className="keypad-action" onClick={() => setNumberDraft((draft) => draft.slice(0, -1))}>⌫</button><button type="button" className="keypad-action" onClick={() => setNumberDraft("")}>×</button></div></div>}
@@ -165,9 +166,9 @@ export default function MathDiagnostic({ locale, onBack, onHome = onBack, itemBa
         {(currentItem.type === "sequence" || currentItem.type === "equation") && <div className="builder-task"><p>{t.tap}</p><div className="built-answer">{builtDraft.length ? builtDraft.map((token, index) => <button key={`${token}-${index}`} type="button" onClick={() => setBuiltDraft((draft) => draft.filter((_, itemIndex) => itemIndex !== index))}>{token}</button>) : <span>{t.build}</span>}</div><div className="token-pool">{currentItem.tokens.map((token, index) => <button key={`${token}-${index}`} type="button" disabled={builtDraft.includes(token)} onClick={() => addToken(token)}>{token}</button>)}</div><button className="builder-reset" type="button" onClick={() => setBuiltDraft([])}>{t.reset}</button></div>}
         {currentItem.type === "match" && <div className="match-task"><p>{t.match}</p><div className="match-pairs">{currentItem.pairs.map((pair) => <button key={pair.id} type="button" className={`match-pair ${activePair === pair.id ? "active" : ""}`} onClick={() => setActivePair(pair.id)}><span>{pair.left}</span><b>{matchDraft[pair.id] || "?"}</b></button>)}</div><div className="match-answers">{currentItem.answers.map((answer, index) => <button key={`${answer}-${index}`} type="button" className={Object.values(matchDraft).includes(answer) ? "used" : ""} onClick={() => activePair && setMatchDraft((draft) => ({ ...draft, [activePair]: answer }))}>{answer}</button>)}</div></div>}
         {message && <p className="diagnostic-message" role="alert">{message}</p>}
-        <div className="diagnostic-navigation"><button className="orange-button diagnostic-submit" type="button" onClick={submitAnswer}>{progress === itemBank.length ? t.finish : t.answer} →</button></div>
+        <div className="diagnostic-navigation"><PlatformButton className="diagnostic-submit" onClick={submitAnswer}>{progress === itemBank.length ? t.finish : t.answer} →</PlatformButton></div>
       </article>
-      {finishConfirmOpen && <div className="finish-overlay" role="dialog" aria-modal="true" aria-labelledby="finish-title"><section className="finish-dialog"><p>{finish.button}</p><h2 id="finish-title">{finish.title}</h2><span>{finish.description}</span><div><button className="text-button" type="button" onClick={() => setFinishConfirmOpen(false)}>{finish.cancel}</button><button className="orange-button" type="button" onClick={finishDiagnostic}>{finish.confirm}</button></div></section></div>}
+      {finishConfirmOpen && <div className="finish-overlay" role="dialog" aria-modal="true" aria-labelledby="finish-title"><section className="finish-dialog"><p>{finish.button}</p><h2 id="finish-title">{finish.title}</h2><span>{finish.description}</span><div><PlatformButton variant="secondary" onClick={() => setFinishConfirmOpen(false)}>{finish.cancel}</PlatformButton><PlatformButton onClick={finishDiagnostic}>{finish.confirm}</PlatformButton></div></section></div>}
     </div>
   </section>;
 }
