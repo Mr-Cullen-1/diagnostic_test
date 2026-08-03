@@ -25,7 +25,7 @@ export const CONFIRM_TOTAL = 10;
 
 const LEVEL_INDEX = Object.fromEntries(levelOrder.map((level, index) => [level, index]));
 const LEVEL_LABEL = {
-  preA1: "Pre-A1",
+  preA1: "Kids",
   A1: "A1",
   A2: "A2",
   B1: "B1",
@@ -69,13 +69,13 @@ const copy = {
   ru: {
     eyebrow: "Английский · адаптивный Placement",
     introTitle: "Узнай, с какого курса лучше начать",
-    introText: "Тест сам подберёт сложность. Всего 40 заданий в трёх частях.",
+    introText: "Тест сам подберёт сложность. До 40 заданий в трёх частях.",
     introNote: "Уровень и школьный класс выбирать не нужно — система определит точку старта по ответам.",
     start: "Начать тест",
     resume: "Продолжить тест",
     exit: "Завершить тест",
-    exitHint: "Все незаданные задания будут засчитаны как неверные, после чего появится результат.",
-    exitConfirmTitle: "Завершить тест?",
+    exitHint: "Если завершить тест сейчас, уровень не будет определён. Чтобы получить рекомендацию, нужно ответить на все вопросы.",
+    exitConfirmTitle: "Завершить тест без результата?",
     cancel: "Продолжить тест",
     part: "Блок",
     ofParts: "из 3",
@@ -88,6 +88,7 @@ const copy = {
     },
     checking: "Проверяем",
     answer: "Ответить",
+    back: "Назад",
     dontKnow: "Не знаю",
     saved: "Ответ сохранён",
     empty: "Сначала выбери, введи или собери ответ.",
@@ -118,7 +119,10 @@ const copy = {
     improve: "Стоит потренировать",
     noStrong: "Нет навыка с устойчивым результатом 70%+.",
     noImprove: "Критичных пробелов по проверенным навыкам не обнаружено.",
-    answered: "Отвечено: {count} из 40",
+    answered: "Отвечено: {count} из {total}",
+    incompleteEyebrow: "Тест не завершён",
+    incompleteTitle: "Уровень пока не определён",
+    incompleteText: "Чтобы получить рекомендацию, пройди тест до конца.",
     b2Note: "B2 здесь — рекомендация точки старта курса, а не официальный сертификат CEFR.",
     preA1NoAge: "После уточнения возраста: Kids до 10 лет включительно или A1 Foundation для старших учеников.",
     retake: "Пройти заново",
@@ -128,13 +132,13 @@ const copy = {
   uz: {
     eyebrow: "Ingliz tili · moslashuvchan Placement",
     introTitle: "Qaysi kursdan boshlash yaxshiroq ekanini bilib oling",
-    introText: "Test qiyinlikni o‘zi moslaydi. Uch qismda jami 40 ta topshiriq bor.",
+    introText: "Test qiyinlikni o‘zi moslaydi. Uch qismda 40 tagacha topshiriq bor.",
     introNote: "Daraja va maktab sinfini tanlash shart emas — tizim boshlash nuqtasini javoblar asosida aniqlaydi.",
     start: "Testni boshlash",
     resume: "Testni davom ettirish",
     exit: "Testni yakunlash",
-    exitHint: "Javob berilmagan barcha topshiriqlar noto‘g‘ri deb hisoblanadi, so‘ng natija ko‘rsatiladi.",
-    exitConfirmTitle: "Testni yakunlaysizmi?",
+    exitHint: "Agar testni hozir yakunlasangiz, daraja aniqlanmaydi. Tavsiya olish uchun barcha savollarga javob berish kerak.",
+    exitConfirmTitle: "Testni natijasiz yakunlaysizmi?",
     cancel: "Testni davom ettirish",
     part: "Blok",
     ofParts: "/ 3",
@@ -147,6 +151,7 @@ const copy = {
     },
     checking: "Tekshirilmoqda",
     answer: "Javob berish",
+    back: "Orqaga",
     dontKnow: "Bilmayman",
     saved: "Javob saqlandi",
     empty: "Avval javobni tanlang, kiriting yoki tuzing.",
@@ -177,7 +182,10 @@ const copy = {
     improve: "Mashq qilish kerak",
     noStrong: "70%+ barqaror natija ko‘rsatgan yo‘nalish yo‘q.",
     noImprove: "Tekshirilgan ko‘nikmalarda jiddiy bo‘shliq topilmadi.",
-    answered: "Javob berildi: {count} / 40",
+    answered: "Javob berildi: {count} / {total}",
+    incompleteEyebrow: "Test yakunlanmadi",
+    incompleteTitle: "Daraja hali aniqlanmadi",
+    incompleteText: "Tavsiyani olish uchun testni oxirigacha topshiring.",
     b2Note: "Bu yerdagi B2 — kursni boshlash tavsiyasi, rasmiy CEFR sertifikati emas.",
     preA1NoAge: "Yosh aniqlangach: 10 yoshgacha Kids, kattaroq o‘quvchilar uchun A1 Foundation.",
     retake: "Qayta topshirish",
@@ -510,22 +518,45 @@ export function buildConfirmationItems({
   });
 }
 
-function highestSupportedAtOrBelow(responses, ceilingLevel) {
-  const { supported } = getSupportedLevels(responses);
-  const ceilingRank = LEVEL_INDEX[ceilingLevel];
-  const eligible = supported.filter((level) => LEVEL_INDEX[level] <= ceilingRank);
-  return (
-    eligible.sort((left, right) => LEVEL_INDEX[right] - LEVEL_INDEX[left])[0] ??
-    "preA1"
-  );
-}
-
 function routeCourse(placementLevel, studentAge) {
   if (placementLevel !== "preA1") return placementLevel;
   if (Number.isFinite(studentAge)) {
     return studentAge <= 10 ? "Kids" : "A1 Foundation";
   }
-  return "Pre-A1 route";
+  return "Kids";
+}
+
+function createEarlyKidsResult({ responses, startStats, startInconsistent, attemptFlags = {} }) {
+  const skillStats = calculateSkillStats(responses);
+  return {
+    status: "complete",
+    completionType: "SECTION_1_KIDS",
+    placementLevel: "preA1",
+    calculatedPlacementLevel: "preA1",
+    recommendedCourse: "Kids",
+    confidence: startInconsistent || attemptFlags.audioError ? "medium" : "high",
+    borderlineWith: null,
+    answeredCount: START_TOTAL,
+    totalQuestions: START_TOTAL,
+    score: responses.filter((response) => response.correct).length,
+    adaptivePath: [],
+    startStats,
+    confirmStats: null,
+    levelStats: calculateLevelStats(responses),
+    skillStats,
+    confirmationPair: null,
+    preConfirmationProbe: null,
+    downgradeFloor: null,
+    downgradeFloorApplied: false,
+    reasonCode: "SECTION_1_KIDS",
+    flags: {
+      startInconsistent,
+      inconsistency: false,
+      audioError: Boolean(attemptFlags.audioError),
+      tooFastCount: responses.filter((response) => response.tooFast).length,
+    },
+    responses,
+  };
 }
 
 function countConfirmByLevel(responses, level) {
@@ -546,6 +577,7 @@ export function decideFinalResult({
   startInconsistent = false,
   studentAge,
   attemptFlags = {},
+  preConfirmationProbe,
 }) {
   const [lower, upper] = confirmationPair;
   const lowerConfirm = countConfirmByLevel(responses, lower);
@@ -585,10 +617,10 @@ export function decideFinalResult({
     placementLevel = lower;
     reasonCode = "LOWER_CONFIRMED_UPPER_REJECTED";
   } else if (lowerConfirm.correct <= 3 && upperConfirm.correct <= 3) {
-    const safeCeiling = oneLevelDown(lower);
-    placementLevel = highestSupportedAtOrBelow(responses, safeCeiling);
+    placementLevel = lower;
     confidence = "medium";
-    reasonCode = "PAIR_TOO_HIGH_RECALCULATED";
+    inconsistency = true;
+    reasonCode = "PAIR_TOO_HIGH_SAFE_LOWER";
   } else if (lowerConfirm.correct <= 3 && upperConfirm.correct >= 4) {
     placementLevel = lower;
     confidence = "medium";
@@ -606,15 +638,30 @@ export function decideFinalResult({
     confidence = "medium";
   }
 
+  const calculatedPlacementLevel = placementLevel;
+  const downgradeFloor = preConfirmationProbe ? oneLevelDown(preConfirmationProbe) : null;
+  const downgradeFloorApplied = Boolean(
+    downgradeFloor && LEVEL_INDEX[placementLevel] < LEVEL_INDEX[downgradeFloor]
+  );
+  if (downgradeFloorApplied) {
+    placementLevel = downgradeFloor;
+    confidence = "medium";
+    reasonCode = "ONE_LEVEL_DOWNGRADE_FLOOR";
+  }
+
   const recommendedCourse = routeCourse(placementLevel, studentAge);
   const score = responses.filter((response) => response.correct).length;
 
   return {
+    status: "complete",
+    completionType: "FULL_PLACEMENT",
     placementLevel,
+    calculatedPlacementLevel,
     recommendedCourse,
     confidence,
     borderlineWith,
     answeredCount: responses.length,
+    totalQuestions: PLACEMENT_TOTAL,
     score,
     adaptivePath,
     startStats,
@@ -625,6 +672,9 @@ export function decideFinalResult({
     levelStats,
     skillStats,
     confirmationPair,
+    preConfirmationProbe,
+    downgradeFloor,
+    downgradeFloorApplied,
     reasonCode,
     flags: {
       startInconsistent,
@@ -678,6 +728,11 @@ export function validateEnglishPlacementBank(itemBank = englishPlacementItems) {
 
   const startItems = itemBank.filter((item) => Number.isInteger(item.startOrder));
   if (startItems.length !== START_TOTAL) errors.push("Start stage must contain exactly 14 tagged items.");
+  const startA1 = startItems.filter((item) => item.level === "A1").length;
+  const startA2 = startItems.filter((item) => item.level === "A2").length;
+  if (startA1 !== 7 || startA2 !== 7 || startA1 + startA2 !== startItems.length) {
+    errors.push("Start stage must contain exactly 7 A1 and 7 A2 items.");
+  }
   const orders = startItems.map((item) => item.startOrder).sort((a, b) => a - b);
   if (orders.some((order, index) => order !== index + 1)) {
     errors.push("startOrder values must be exactly 1..14.");
@@ -695,7 +750,7 @@ function getStartPlan(itemBank) {
 
 function createInitialSession(seed = Date.now()) {
   return {
-    version: 3,
+    version: 6,
     phase: "intro",
     seed,
     queue: [],
@@ -722,7 +777,7 @@ function safeLoadSession(storageKey, itemMap) {
     const raw = window.localStorage.getItem(storageKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed?.version !== 3 || parsed?.phase === "result") return null;
+    if (parsed?.version !== 6 || parsed?.phase === "result") return null;
     const allIds = [...(parsed.queue ?? []), ...(parsed.responses ?? []).map((item) => item.itemId)];
     if (allIds.some((id) => !itemMap.has(id))) return null;
     return parsed;
@@ -776,6 +831,24 @@ function transitionAfterQueue({ session, responses, itemBank, studentAge }) {
 
   if (session.phase === "start") {
     const start = getStartProbe(responses.filter((response) => response.stage === "start"));
+    if (start.probeLevel === "preA1") {
+      return {
+        ...session,
+        phase: "result",
+        queue: [],
+        currentIndex: 0,
+        responses,
+        probeLevel: start.probeLevel,
+        startStats: start.startStats,
+        startInconsistent: start.inconsistent,
+        result: createEarlyKidsResult({
+          responses,
+          startStats: start.startStats,
+          startInconsistent: start.inconsistent,
+          attemptFlags: session.flags,
+        }),
+      };
+    }
     const blockItems = buildAdaptiveBlock({
       itemBank,
       usedIds,
@@ -858,6 +931,7 @@ function transitionAfterQueue({ session, responses, itemBank, studentAge }) {
       startInconsistent: session.startInconsistent,
       studentAge,
       attemptFlags: session.flags,
+      preConfirmationProbe: session.probeLevel,
     });
     return {
       ...session,
@@ -912,7 +986,7 @@ function optionLabel(option) {
 export default function EnglishDiagnostic({
   locale = "ru",
   studentAge,
-  storageKey = "english-placement-v3",
+  storageKey = "english-placement-v6",
   attemptSeed = undefined,
   itemBank = englishPlacementItems,
   onHome = () => {},
@@ -979,6 +1053,9 @@ export default function EnglishDiagnostic({
 
   const partNumber = session.phase === "start" ? 1 : session.phase === "adaptive" ? 2 : 3;
   const questionNumber = session.responses.length + 1;
+  const startProgress = session.responses.filter((response) => response.stage === "start").length / START_TOTAL;
+  const adaptiveProgress = session.responses.filter((response) => response.stage === "adaptive").length / ADAPTIVE_TOTAL;
+  const confirmProgress = session.responses.filter((response) => response.stage === "confirm").length / CONFIRM_TOTAL;
   const currentDomain = currentItem ? localText(domainNames[currentItem.domain], locale) : "";
   const currentInstruction = currentItem ? localText(currentItem.instruction, locale) : "";
   const currentPrompt = currentItem ? localText(currentItem.prompt, locale) : "";
@@ -995,6 +1072,45 @@ export default function EnglishDiagnostic({
     setTextDraft("");
     setSequenceDraft([]);
     setMessage("");
+  }
+
+  const canGoBack = Boolean(
+    session.responses.length && session.responses[session.responses.length - 1].stage === session.phase
+  );
+
+  function goBack() {
+    if (!canGoBack) return;
+    const previousResponse = session.responses[session.responses.length - 1];
+    const retainedResponses = session.responses.slice(0, -1);
+    let replayedSession = {
+      ...createInitialSession(session.seed),
+      phase: "start",
+      queue: getStartPlan(itemBank).map((item) => item.id),
+      startedAt: session.startedAt,
+    };
+
+    retainedResponses.forEach((response) => {
+      replayedSession = advanceSession({
+        session: replayedSession,
+        response,
+        itemBank,
+        studentAge,
+      });
+    });
+
+    replayedSession = {
+      ...replayedSession,
+      audioPlays: session.audioPlays,
+      flags: session.flags,
+      soundReady: session.soundReady,
+      soundCheckPlayed: session.soundCheckPlayed,
+    };
+
+    setChoiceDraft(typeof previousResponse.answer === "string" ? previousResponse.answer : "");
+    setTextDraft(typeof previousResponse.answer === "string" ? previousResponse.answer : "");
+    setSequenceDraft(Array.isArray(previousResponse.answer) ? previousResponse.answer : []);
+    setMessage("");
+    setSession(replayedSession);
   }
 
   function beginTest() {
@@ -1017,50 +1133,26 @@ export default function EnglishDiagnostic({
     setSession(createInitialSession(attemptSeed ?? Date.now()));
   }
 
-  function completeExitedSession() {
-    let nextSession = session;
-    let skippedCount = 0;
-
-    while (nextSession.phase !== "result" && skippedCount < PLACEMENT_TOTAL) {
-      const nextItem = itemMap.get(nextSession.queue[nextSession.currentIndex]);
-      if (!nextItem) {
-        throw new Error("English Placement cannot finish because the current item is missing.");
-      }
-
-      const skippedResponse = buildResponse({
-        session: nextSession,
-        item: nextItem,
-        answer: null,
-        correct: false,
-        skipped: true,
-        answerTimeMs: 0,
-      });
-      nextSession = advanceSession({
-        session: nextSession,
-        response: skippedResponse,
-        itemBank,
-        studentAge,
-      });
-      skippedCount += 1;
-    }
-
-    if (nextSession.phase !== "result") {
-      throw new Error("English Placement did not reach a final result after exit.");
-    }
-
-    return nextSession;
-  }
-
   function exitTest() {
     setExitConfirmationOpen(false);
-    const completedSession = completeExitedSession();
     resetAnswerDrafts();
     completionReportedRef.current = false;
-    setSession(completedSession);
+    const incompleteSession = {
+      ...session,
+      phase: "incomplete",
+      queue: [],
+      currentIndex: 0,
+      result: null,
+      status: "incomplete",
+      reasonCode: "STUDENT_EXITED_BEFORE_COMPLETION",
+      totalQuestions: PLACEMENT_TOTAL,
+      endedAt: new Date().toISOString(),
+    };
+    setSession(incompleteSession);
     onProgress?.({
-      status: "complete",
-      answeredCount: completedSession.responses.length,
-      responses: completedSession.responses,
+      status: "incomplete",
+      answeredCount: incompleteSession.responses.length,
+      responses: incompleteSession.responses,
     });
   }
 
@@ -1266,9 +1358,9 @@ export default function EnglishDiagnostic({
           <p className="result-score result-correct">
             {t.correctAnswers
               .replace("{score}", String(result.score))
-              .replace("{total}", String(PLACEMENT_TOTAL))}
+              .replace("{total}", String(result.totalQuestions))}
           </p>
-          <p>{t.answered.replace("{count}", result.answeredCount)}</p>
+          <p>{t.answered.replace("{count}", result.answeredCount).replace("{total}", result.totalQuestions)}</p>
 
           {result.borderlineWith && (
             <p className="result-note placement-borderline">
@@ -1324,6 +1416,23 @@ export default function EnglishDiagnostic({
     );
   }
 
+  if (session.phase === "incomplete") {
+    return (
+      <section className="math-diagnostic-screen english-placement-screen">
+        <div className="diagnostic-result-card placement-start-card">
+          <p className="diagnostic-eyebrow">{t.incompleteEyebrow}</p>
+          <h1>{t.incompleteTitle}</h1>
+          <p>{t.answered.replace("{count}", session.responses.length).replace("{total}", PLACEMENT_TOTAL)}</p>
+          <p className="result-note">{t.incompleteText}</p>
+          <div className="diagnostic-actions">
+            <PlatformButton variant="secondary" onClick={resetTest}>{t.retake}</PlatformButton>
+            <PlatformButton onClick={onHome}>{t.courses}</PlatformButton>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   if (!currentItem) {
     return null;
   }
@@ -1350,8 +1459,15 @@ export default function EnglishDiagnostic({
           <p className="diagnostic-question-count">
             {t.question} {questionNumber} {t.ofQuestions}
           </p>
-          <div className="diagnostic-progress">
-            <span style={{ width: `${(questionNumber / PLACEMENT_TOTAL) * 100}%` }} />
+          <div className="placement-progress-bars" aria-label={`${t.question} ${questionNumber} ${t.ofQuestions}`}>
+            {session.phase === "start" ? (
+              <div className="diagnostic-progress"><span style={{ width: `${startProgress * 100}%` }} /></div>
+            ) : (
+              <>
+                <div className="diagnostic-progress"><span style={{ width: `${adaptiveProgress * 100}%` }} /></div>
+                <div className="diagnostic-progress"><span style={{ width: `${confirmProgress * 100}%` }} /></div>
+              </>
+            )}
           </div>
           <p className="diagnostic-exit-note">{t.exitHint}</p>
         </aside>
@@ -1494,6 +1610,9 @@ export default function EnglishDiagnostic({
               )}
 
               <div className="diagnostic-navigation english-diagnostic-navigation">
+                <PlatformButton variant="secondary" disabled={!canGoBack} onClick={goBack}>
+                  ← {t.back}
+                </PlatformButton>
                 <PlatformButton variant="secondary" onClick={() => submitAnswer({ skipped: true })}>
                   {t.dontKnow}
                 </PlatformButton>
