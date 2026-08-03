@@ -23,6 +23,12 @@ export const START_TOTAL = 14;
 export const ADAPTIVE_TOTAL = 16;
 export const CONFIRM_TOTAL = 10;
 
+const PLACEMENT_SECTIONS = [
+  { stage: "start", total: START_TOTAL },
+  { stage: "adaptive", total: ADAPTIVE_TOTAL },
+  { stage: "confirm", total: CONFIRM_TOTAL },
+];
+
 const LEVEL_INDEX = Object.fromEntries(levelOrder.map((level, index) => [level, index]));
 const LEVEL_LABEL = {
   preA1: "Pre-A1",
@@ -30,6 +36,11 @@ const LEVEL_LABEL = {
   A2: "A2",
   B1: "B1",
   B2: "B2",
+};
+
+const RESULT_LEVEL_LABEL = {
+  ...LEVEL_LABEL,
+  preA1: "Kids",
 };
 
 const ADAPTIVE_DOMAIN_BLOCKS = [
@@ -69,7 +80,7 @@ const copy = {
   ru: {
     eyebrow: "Английский · адаптивный Placement",
     introTitle: "Узнай, с какого курса лучше начать",
-    introText: "Тест сам подберёт сложность. Всего 40 заданий в трёх частях.",
+    introText: "Тест сам подберёт сложность. До 40 заданий в трёх частях.",
     introNote: "Уровень и школьный класс выбирать не нужно — система определит точку старта по ответам.",
     start: "Начать тест",
     resume: "Продолжить тест",
@@ -86,7 +97,25 @@ const copy = {
       adaptive: "Адаптивная проверка",
       confirm: "Подтверждение границы",
     },
+    sectionResultEyebrow: "Блок {part} из 3 завершён",
+    sectionResultTitle: "Результат блока",
+    sectionProgressFirst: "Прогресс первого блока",
+    sectionProgressRemaining: "Прогресс двух оставшихся блоков",
+    sectionProgressPart: "Блок {part}: {current} из {total}",
+    sectionCorrect: "Правильно",
+    sectionIncorrect: "Неправильно",
+    sectionTotal: "Всего заданий: {total}",
+    sectionLevel: "Определённый уровень",
+    sectionKidsMessage: "Первый блок показывает уровень Kids. Тест завершён — дополнительные блоки не нужны.",
+    sectionRemainingMessage: "Впереди ещё {sections} блока и {questions} заданий.",
+    sectionContinueMessage: "Проверка продолжится в следующем блоке.",
+    sectionFinalMessage: "Все три блока пройдены. Теперь можно посмотреть итоговую рекомендацию.",
+    continueToPart: "Перейти к блоку {part}",
+    showKidsResult: "Показать рекомендацию Kids",
+    showFinalResult: "Показать итоговый результат",
     checking: "Проверяем",
+    previous: "Назад",
+    previousHint: "Предыдущий вопрос",
     answer: "Ответить",
     dontKnow: "Не знаю",
     saved: "Ответ сохранён",
@@ -118,7 +147,7 @@ const copy = {
     improve: "Стоит потренировать",
     noStrong: "Нет навыка с устойчивым результатом 70%+.",
     noImprove: "Критичных пробелов по проверенным навыкам не обнаружено.",
-    answered: "Отвечено: {count} из 40",
+    answered: "Отвечено: {count} из {total}",
     b2Note: "B2 здесь — рекомендация точки старта курса, а не официальный сертификат CEFR.",
     preA1NoAge: "После уточнения возраста: Kids до 10 лет включительно или A1 Foundation для старших учеников.",
     retake: "Пройти заново",
@@ -128,7 +157,7 @@ const copy = {
   uz: {
     eyebrow: "Ingliz tili · moslashuvchan Placement",
     introTitle: "Qaysi kursdan boshlash yaxshiroq ekanini bilib oling",
-    introText: "Test qiyinlikni o‘zi moslaydi. Uch qismda jami 40 ta topshiriq bor.",
+    introText: "Test qiyinlikni o‘zi moslaydi. Uch qismda 40 tagacha topshiriq bor.",
     introNote: "Daraja va maktab sinfini tanlash shart emas — tizim boshlash nuqtasini javoblar asosida aniqlaydi.",
     start: "Testni boshlash",
     resume: "Testni davom ettirish",
@@ -145,7 +174,25 @@ const copy = {
       adaptive: "Moslashuvchan tekshiruv",
       confirm: "Chegarani tasdiqlash",
     },
+    sectionResultEyebrow: "3 blokdan {part}-blok yakunlandi",
+    sectionResultTitle: "Blok natijasi",
+    sectionProgressFirst: "Birinchi blok jarayoni",
+    sectionProgressRemaining: "Qolgan ikki blok jarayoni",
+    sectionProgressPart: "{part}-blok: {current} / {total}",
+    sectionCorrect: "To‘g‘ri",
+    sectionIncorrect: "Noto‘g‘ri",
+    sectionTotal: "Jami topshiriqlar: {total}",
+    sectionLevel: "Aniqlangan daraja",
+    sectionKidsMessage: "Birinchi blok Kids darajasini ko‘rsatdi. Test yakunlandi — qo‘shimcha bloklar kerak emas.",
+    sectionRemainingMessage: "Oldinda yana {sections} ta blok va {questions} ta topshiriq bor.",
+    sectionContinueMessage: "Tekshiruv keyingi bo‘limda davom etadi.",
+    sectionFinalMessage: "Uchala blok ham yakunlandi. Endi yakuniy tavsiyani ko‘rishingiz mumkin.",
+    continueToPart: "{part}-blokga o‘tish",
+    showKidsResult: "Kids tavsiyasini ko‘rish",
+    showFinalResult: "Yakuniy natijani ko‘rish",
     checking: "Tekshirilmoqda",
+    previous: "Ortga",
+    previousHint: "Oldingi savol",
     answer: "Javob berish",
     dontKnow: "Bilmayman",
     saved: "Javob saqlandi",
@@ -177,7 +224,7 @@ const copy = {
     improve: "Mashq qilish kerak",
     noStrong: "70%+ barqaror natija ko‘rsatgan yo‘nalish yo‘q.",
     noImprove: "Tekshirilgan ko‘nikmalarda jiddiy bo‘shliq topilmadi.",
-    answered: "Javob berildi: {count} / 40",
+    answered: "Javob berildi: {count} / {total}",
     b2Note: "Bu yerdagi B2 — kursni boshlash tavsiyasi, rasmiy CEFR sertifikati emas.",
     preA1NoAge: "Yosh aniqlangach: 10 yoshgacha Kids, kattaroq o‘quvchilar uchun A1 Foundation.",
     retake: "Qayta topshirish",
@@ -528,6 +575,45 @@ function routeCourse(placementLevel, studentAge) {
   return "Pre-A1 route";
 }
 
+export function decideEarlyKidsResult({
+  responses,
+  startStats,
+  startInconsistent = false,
+  attemptFlags = {},
+}) {
+  const levelStats = calculateLevelStats(responses);
+  const skillStats = calculateSkillStats(responses);
+  const tooFastCount = responses.filter((response) => response.tooFast).length;
+  const audioError = Boolean(attemptFlags.audioError);
+  const confidence =
+    startInconsistent || audioError || tooFastCount >= 4 ? "medium" : "high";
+
+  return {
+    placementLevel: "preA1",
+    recommendedCourse: "Kids",
+    confidence,
+    borderlineWith: null,
+    answeredCount: responses.length,
+    totalQuestions: responses.length,
+    score: responses.filter((response) => response.correct).length,
+    adaptivePath: [],
+    startStats,
+    confirmStats: {},
+    levelStats,
+    skillStats,
+    confirmationPair: null,
+    reasonCode: "START_KIDS_EARLY_EXIT",
+    endedEarly: true,
+    flags: {
+      startInconsistent,
+      inconsistency: false,
+      audioError,
+      tooFastCount,
+    },
+    responses,
+  };
+}
+
 function countConfirmByLevel(responses, level) {
   const selected = responses.filter(
     (response) => response.stage === "confirm" && response.level === level
@@ -615,6 +701,7 @@ export function decideFinalResult({
     confidence,
     borderlineWith,
     answeredCount: responses.length,
+    totalQuestions: responses.length,
     score,
     adaptivePath,
     startStats,
@@ -695,7 +782,7 @@ function getStartPlan(itemBank) {
 
 function createInitialSession(seed = Date.now()) {
   return {
-    version: 3,
+    version: 5,
     phase: "intro",
     seed,
     queue: [],
@@ -712,8 +799,26 @@ function createInitialSession(seed = Date.now()) {
     audioPlays: {},
     flags: { audioError: false },
     result: null,
+    sectionReview: null,
+    navigationHistory: [],
+    navigationFuture: [],
     startedAt: null,
   };
+}
+
+function snapshotSessionForNavigation(session) {
+  const snapshot = { ...session };
+  delete snapshot.navigationHistory;
+  delete snapshot.navigationFuture;
+  return snapshot;
+}
+
+function mergeAudioPlayCounts(previousCounts = {}, currentCounts = {}) {
+  const merged = { ...previousCounts };
+  Object.entries(currentCounts).forEach(([itemId, count]) => {
+    merged[itemId] = Math.max(merged[itemId] ?? 0, count ?? 0);
+  });
+  return merged;
 }
 
 function safeLoadSession(storageKey, itemMap) {
@@ -722,10 +827,21 @@ function safeLoadSession(storageKey, itemMap) {
     const raw = window.localStorage.getItem(storageKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed?.version !== 3 || parsed?.phase === "result") return null;
+    if (
+      parsed?.version !== 5 ||
+      (parsed?.phase === "result" && !parsed?.sectionReview)
+    ) return null;
     const allIds = [...(parsed.queue ?? []), ...(parsed.responses ?? []).map((item) => item.itemId)];
     if (allIds.some((id) => !itemMap.has(id))) return null;
-    return parsed;
+    return {
+      ...parsed,
+      navigationHistory: Array.isArray(parsed.navigationHistory)
+        ? parsed.navigationHistory
+        : [],
+      navigationFuture: Array.isArray(parsed.navigationFuture)
+        ? parsed.navigationFuture
+        : [],
+    };
   } catch {
     return null;
   }
@@ -734,7 +850,10 @@ function safeLoadSession(storageKey, itemMap) {
 function saveSession(storageKey, session) {
   if (typeof window === "undefined") return;
   try {
-    if (session.phase === "intro" || session.phase === "result") {
+    if (
+      session.phase === "intro" ||
+      (session.phase === "result" && !session.sectionReview)
+    ) {
       window.localStorage.removeItem(storageKey);
     } else {
       window.localStorage.setItem(storageKey, JSON.stringify(session));
@@ -771,11 +890,69 @@ function buildResponse({ session, item, answer, correct, skipped, answerTimeMs }
   };
 }
 
+export function calculateSectionStats(responses, stage) {
+  const sectionResponses = responses.filter((response) => response.stage === stage);
+  const correct = sectionResponses.filter((response) => response.correct).length;
+  return {
+    correct,
+    incorrect: sectionResponses.length - correct,
+    total: sectionResponses.length,
+  };
+}
+
+function withSectionReview({
+  nextSession,
+  stage,
+  partNumber,
+  identifiedLevel,
+  kind,
+  nextPart = null,
+}) {
+  return {
+    ...nextSession,
+    sectionReview: {
+      ...calculateSectionStats(nextSession.responses, stage),
+      stage,
+      partNumber,
+      identifiedLevel,
+      kind,
+      nextPart,
+    },
+  };
+}
+
 function transitionAfterQueue({ session, responses, itemBank, studentAge }) {
   const usedIds = responses.map((response) => response.itemId);
 
   if (session.phase === "start") {
     const start = getStartProbe(responses.filter((response) => response.stage === "start"));
+
+    if (start.probeLevel === "preA1") {
+      const result = decideEarlyKidsResult({
+        responses,
+        startStats: start.startStats,
+        startInconsistent: start.inconsistent,
+        attemptFlags: session.flags,
+      });
+      return withSectionReview({
+        nextSession: {
+          ...session,
+          phase: "result",
+          queue: [],
+          currentIndex: 0,
+          responses,
+          probeLevel: start.probeLevel,
+          startStats: start.startStats,
+          startInconsistent: start.inconsistent,
+          result,
+        },
+        stage: "start",
+        partNumber: 1,
+        identifiedLevel: "preA1",
+        kind: "earlyKids",
+      });
+    }
+
     const blockItems = buildAdaptiveBlock({
       itemBank,
       usedIds,
@@ -783,17 +960,24 @@ function transitionAfterQueue({ session, responses, itemBank, studentAge }) {
       blockIndex: 0,
       seed: session.seed,
     });
-    return {
-      ...session,
-      phase: "adaptive",
-      queue: blockItems.map((item) => item.id),
-      currentIndex: 0,
-      responses,
-      probeLevel: start.probeLevel,
-      adaptiveBlockIndex: 0,
-      startStats: start.startStats,
-      startInconsistent: start.inconsistent,
-    };
+    return withSectionReview({
+      nextSession: {
+        ...session,
+        phase: "adaptive",
+        queue: blockItems.map((item) => item.id),
+        currentIndex: 0,
+        responses,
+        probeLevel: start.probeLevel,
+        adaptiveBlockIndex: 0,
+        startStats: start.startStats,
+        startInconsistent: start.inconsistent,
+      },
+      stage: "start",
+      partNumber: 1,
+      identifiedLevel: start.probeLevel,
+      kind: "continue",
+      nextPart: 2,
+    });
   }
 
   if (session.phase === "adaptive") {
@@ -837,16 +1021,23 @@ function transitionAfterQueue({ session, responses, itemBank, studentAge }) {
       seed: session.seed,
     });
 
-    return {
-      ...session,
-      phase: "confirm",
-      queue: confirmItems.map((item) => item.id),
-      currentIndex: 0,
-      responses,
-      probeLevel: nextProbe,
-      adaptivePath,
-      confirmationPair: confirmation.pair,
-    };
+    return withSectionReview({
+      nextSession: {
+        ...session,
+        phase: "confirm",
+        queue: confirmItems.map((item) => item.id),
+        currentIndex: 0,
+        responses,
+        probeLevel: nextProbe,
+        adaptivePath,
+        confirmationPair: confirmation.pair,
+      },
+      stage: "adaptive",
+      partNumber: 2,
+      identifiedLevel: nextProbe,
+      kind: "continue",
+      nextPart: 3,
+    });
   }
 
   if (session.phase === "confirm") {
@@ -859,14 +1050,20 @@ function transitionAfterQueue({ session, responses, itemBank, studentAge }) {
       studentAge,
       attemptFlags: session.flags,
     });
-    return {
-      ...session,
-      phase: "result",
-      queue: [],
-      currentIndex: 0,
-      responses,
-      result,
-    };
+    return withSectionReview({
+      nextSession: {
+        ...session,
+        phase: "result",
+        queue: [],
+        currentIndex: 0,
+        responses,
+        result,
+      },
+      stage: "confirm",
+      partNumber: 3,
+      identifiedLevel: result.placementLevel,
+      kind: "final",
+    });
   }
 
   return { ...session, responses };
@@ -909,10 +1106,88 @@ function optionLabel(option) {
   return typeof option === "string" ? option : option?.text ?? "";
 }
 
+export function getPlacementSectionProgress(session) {
+  const responses = session.responses ?? [];
+  const activeStage = session.sectionReview
+    ? null
+    : PLACEMENT_SECTIONS.some(({ stage }) => stage === session.phase)
+      ? session.phase
+      : null;
+  const showFirstSectionOnly =
+    session.phase === "intro" ||
+    session.phase === "start" ||
+    session.sectionReview?.kind === "earlyKids";
+  const visibleSections = showFirstSectionOnly
+    ? PLACEMENT_SECTIONS.slice(0, 1)
+    : PLACEMENT_SECTIONS.slice(1);
+
+  return visibleSections.map(({ stage, total }) => {
+    const partNumber = PLACEMENT_SECTIONS.findIndex((section) => section.stage === stage) + 1;
+    const completed = responses.filter((response) => response.stage === stage).length;
+    const current = Math.min(total, completed + (activeStage === stage ? 1 : 0));
+
+    return {
+      stage,
+      partNumber,
+      total,
+      current,
+      percent: total ? (current / total) * 100 : 0,
+      isActive: activeStage === stage,
+      isComplete: completed >= total,
+    };
+  });
+}
+
+function PlacementSectionProgress({ session, t, variant = "test" }) {
+  const sections = getPlacementSectionProgress(session);
+  const progressGroupLabel =
+    sections.length === 1 ? t.sectionProgressFirst : t.sectionProgressRemaining;
+
+  return (
+    <div
+      className={`english-section-progress english-section-progress-${variant} english-section-progress-count-${sections.length}`}
+      aria-label={progressGroupLabel}
+    >
+      {sections.map((section) => {
+        const stateClass = section.isActive
+          ? "is-active"
+          : section.isComplete
+            ? "is-complete"
+            : "is-upcoming";
+        const progressLabel = t.sectionProgressPart
+          .replace("{part}", String(section.partNumber))
+          .replace("{current}", String(section.current))
+          .replace("{total}", String(section.total));
+
+        return (
+          <div
+            key={section.stage}
+            className={`english-section-progress-item ${stateClass}`}
+          >
+            <span className="english-section-progress-number" aria-hidden="true">
+              {section.partNumber}
+            </span>
+            <span
+              className="english-section-progress-track"
+              role="progressbar"
+              aria-label={progressLabel}
+              aria-valuemin={0}
+              aria-valuemax={section.total}
+              aria-valuenow={section.current}
+            >
+              <span style={{ width: `${section.percent}%` }} />
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function EnglishDiagnostic({
   locale = "ru",
   studentAge,
-  storageKey = "english-placement-v3",
+  storageKey = "english-placement-v5",
   attemptSeed = undefined,
   itemBank = englishPlacementItems,
   onHome = () => {},
@@ -954,14 +1229,21 @@ export default function EnglishDiagnostic({
     : null;
 
   useEffect(() => {
-    questionStartedAtRef.current = Date.now();
-  }, [currentItem?.id]);
+    if (!session.sectionReview && currentItem) {
+      questionStartedAtRef.current = Date.now();
+    }
+  }, [currentItem, session.sectionReview]);
 
   useEffect(() => {
-    if (session.phase !== "result" || !session.result || completionReportedRef.current) return;
+    if (
+      session.phase !== "result" ||
+      session.sectionReview ||
+      !session.result ||
+      completionReportedRef.current
+    ) return;
     completionReportedRef.current = true;
     onComplete?.(session.result);
-  }, [session.phase, session.result, onComplete]);
+  }, [session.phase, session.result, session.sectionReview, onComplete]);
 
   useEffect(
     () => () => {
@@ -983,6 +1265,13 @@ export default function EnglishDiagnostic({
   const currentInstruction = currentItem ? localText(currentItem.instruction, locale) : "";
   const currentPrompt = currentItem ? localText(currentItem.prompt, locale) : "";
   const audioPlayCount = currentItem ? session.audioPlays[currentItem.id] ?? 0 : 0;
+  const navigationHistory = session.navigationHistory ?? [];
+  const previousNavigationEntry = navigationHistory[navigationHistory.length - 1] ?? null;
+  const canGoToPreviousQuestion = Boolean(
+    !session.sectionReview &&
+      previousNavigationEntry &&
+      previousNavigationEntry.before?.phase === session.phase
+  );
 
   function showSavedMessage() {
     setMessage(t.saved);
@@ -995,6 +1284,60 @@ export default function EnglishDiagnostic({
     setTextDraft("");
     setSequenceDraft([]);
     setMessage("");
+  }
+
+  function hydrateAnswerDraft(response) {
+    setChoiceDraft("");
+    setTextDraft("");
+    setSequenceDraft([]);
+    setMessage("");
+
+    if (!response || response.skipped || response.answer == null) return;
+    const item = itemMap.get(response.itemId);
+    if (!item) return;
+
+    if (item.type === "text") {
+      setTextDraft(String(response.answer));
+    } else if (item.type === "sequence") {
+      setSequenceDraft(Array.isArray(response.answer) ? [...response.answer] : []);
+    } else {
+      setChoiceDraft(String(response.answer));
+    }
+  }
+
+  function goToPreviousQuestion() {
+    if (!canGoToPreviousQuestion || !previousNavigationEntry) return;
+
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+
+    const restored = previousNavigationEntry.before;
+    const nextSession = {
+      ...restored,
+      soundReady: Boolean(restored.soundReady || session.soundReady),
+      soundCheckPlayed: Boolean(restored.soundCheckPlayed || session.soundCheckPlayed),
+      audioPlays: mergeAudioPlayCounts(restored.audioPlays, session.audioPlays),
+      flags: {
+        ...restored.flags,
+        audioError: Boolean(restored.flags?.audioError || session.flags?.audioError),
+      },
+      navigationHistory: navigationHistory.slice(0, -1),
+      navigationFuture: [
+        previousNavigationEntry,
+        ...(session.navigationFuture ?? []),
+      ],
+    };
+
+    hydrateAnswerDraft(previousNavigationEntry.response);
+    setSession(nextSession);
+    onProgress?.({
+      status: "in_progress",
+      answeredCount: nextSession.responses.length,
+      responses: nextSession.responses,
+      phase: nextSession.phase,
+      navigation: "back",
+    });
   }
 
   function beginTest() {
@@ -1015,6 +1358,19 @@ export default function EnglishDiagnostic({
     completionReportedRef.current = false;
     resetAnswerDrafts();
     setSession(createInitialSession(attemptSeed ?? Date.now()));
+  }
+
+  function continueAfterSectionReview() {
+    if (!session.sectionReview) return;
+    const nextSession = { ...session, sectionReview: null };
+    resetAnswerDrafts();
+    setSession(nextSession);
+    onProgress?.({
+      status: nextSession.phase === "result" ? "complete" : "in_progress",
+      answeredCount: nextSession.responses.length,
+      responses: nextSession.responses,
+      phase: nextSession.phase,
+    });
   }
 
   function completeExitedSession() {
@@ -1190,22 +1546,70 @@ export default function EnglishDiagnostic({
       skipped,
       answerTimeMs,
     });
-    const nextSession = advanceSession({
-      session,
+    const sessionBeforeAnswer = snapshotSessionForNavigation(session);
+    const currentFutureEntry = (session.navigationFuture ?? [])[0] ?? null;
+    const isRevisitedQuestion = currentFutureEntry?.response?.itemId === currentItem.id;
+    const canKeepFutureAnswers = isRevisitedQuestion;
+    const advancedSession = advanceSession({
+      session: sessionBeforeAnswer,
       response,
       itemBank,
       studentAge,
     });
+    const remainsInCurrentSection = Boolean(
+      advancedSession.phase === session.phase && !advancedSession.sectionReview
+    );
+    let navigationFuture = canKeepFutureAnswers
+      ? (session.navigationFuture ?? []).slice(1)
+      : [];
+
+    if (remainsInCurrentSection && navigationFuture.length) {
+      const nextItemId = advancedSession.queue[advancedSession.currentIndex];
+      if (
+        navigationFuture[0]?.response?.itemId !== nextItemId ||
+        navigationFuture[0]?.before?.phase !== advancedSession.phase
+      ) {
+        navigationFuture = [];
+      }
+    }
+
+    const nextSession = {
+      ...advancedSession,
+      navigationHistory: remainsInCurrentSection
+        ? [
+            ...(session.navigationHistory ?? []),
+            { before: sessionBeforeAnswer, response },
+          ]
+        : [],
+      navigationFuture: remainsInCurrentSection ? navigationFuture : [],
+    };
 
     resetAnswerDrafts();
+    const nextFutureEntry = nextSession.navigationFuture[0] ?? null;
+    if (
+      nextFutureEntry?.response?.itemId ===
+      nextSession.queue[nextSession.currentIndex]
+    ) {
+      hydrateAnswerDraft(nextFutureEntry.response);
+    }
     setSession(nextSession);
     onProgress?.({
-      status: nextSession.phase === "result" ? "complete" : "in_progress",
+      status:
+        nextSession.phase === "result" && !nextSession.sectionReview
+          ? "complete"
+          : "in_progress",
       answeredCount: nextSession.responses.length,
       response,
+      responses: nextSession.responses,
       phase: nextSession.phase,
+      revised: isRevisitedQuestion,
     });
-    if (nextSession.phase === "result" && nextSession.result && !completionReportedRef.current) {
+    if (
+      nextSession.phase === "result" &&
+      !nextSession.sectionReview &&
+      nextSession.result &&
+      !completionReportedRef.current
+    ) {
       completionReportedRef.current = true;
       onComplete?.(nextSession.result);
     }
@@ -1234,8 +1638,74 @@ export default function EnglishDiagnostic({
     );
   }
 
+  if (session.sectionReview) {
+    const review = session.sectionReview;
+    const reviewLevel = RESULT_LEVEL_LABEL[review.identifiedLevel];
+    const remainingSections = PLACEMENT_SECTIONS.slice(review.partNumber);
+    const remainingQuestionCount = remainingSections.reduce(
+      (total, section) => total + section.total,
+      0
+    );
+    const firstSectionContinueMessage = t.sectionRemainingMessage
+      .replace("{sections}", String(remainingSections.length))
+      .replace("{questions}", String(remainingQuestionCount));
+    const reviewMessage =
+      review.kind === "earlyKids"
+        ? t.sectionKidsMessage
+        : review.kind === "final"
+          ? t.sectionFinalMessage
+          : review.partNumber === 1
+            ? firstSectionContinueMessage
+            : t.sectionContinueMessage;
+    const reviewAction =
+      review.kind === "earlyKids"
+        ? t.showKidsResult
+        : review.kind === "final"
+          ? t.showFinalResult
+          : t.continueToPart.replace("{part}", String(review.nextPart));
+
+    return (
+      <section className="math-diagnostic-screen english-placement-screen english-section-review-screen">
+        <div className="diagnostic-result-card english-section-review-card">
+          <PlacementSectionProgress session={session} t={t} variant="review" />
+          <p className="diagnostic-eyebrow">
+            {t.sectionResultEyebrow.replace("{part}", String(review.partNumber))}
+          </p>
+          <h1>{t.sectionResultTitle}</h1>
+
+          <div className="english-section-score-grid">
+            <article className="is-correct">
+              <span>{t.sectionCorrect}</span>
+              <b>{review.correct}</b>
+            </article>
+            <article className="is-incorrect">
+              <span>{t.sectionIncorrect}</span>
+              <b>{review.incorrect}</b>
+            </article>
+          </div>
+
+          <p className="english-section-total">
+            {t.sectionTotal.replace("{total}", String(review.total))}
+          </p>
+
+          <div className="english-section-level">
+            <span>{t.sectionLevel}</span>
+            <b>{reviewLevel}</b>
+            <small>{localText(levelDefinitions[review.identifiedLevel].label, locale)}</small>
+          </div>
+
+          <p className="english-section-message">{reviewMessage}</p>
+          <PlatformButton className="english-section-continue" onClick={continueAfterSectionReview}>
+            {reviewAction} →
+          </PlatformButton>
+        </div>
+      </section>
+    );
+  }
+
   if (session.phase === "result" && session.result) {
     const result = session.result;
+    const resultTotal = result.totalQuestions ?? result.responses?.length ?? PLACEMENT_TOTAL;
     const strengths = Object.entries(result.skillStats).filter(
       ([, stat]) => stat.total > 0 && stat.accuracy >= 0.7
     );
@@ -1249,34 +1719,34 @@ export default function EnglishDiagnostic({
       result.flags.tooFastCount >= 4;
 
     return (
-      <section className="math-diagnostic-screen english-placement-screen">
-        <div className="diagnostic-result-card">
+      <section className="math-diagnostic-screen english-placement-screen english-placement-result-screen">
+        <div className="diagnostic-result-card english-placement-result-card">
           <p className="diagnostic-eyebrow">{t.resultEyebrow}</p>
           <h1>{t.resultTitle}</h1>
-          <div className="result-grade english-result-level">
-            <b>{LEVEL_LABEL[result.placementLevel]}</b>
-            <span>{localText(levelDefinitions[result.placementLevel].label, locale)}</span>
+          <div className="english-result-summary">
+            <div className="result-grade english-result-level">
+              <b>{RESULT_LEVEL_LABEL[result.placementLevel]}</b>
+              <span>{localText(levelDefinitions[result.placementLevel].label, locale)}</span>
+            </div>
+            <div className="english-result-details">
+              <strong>
+                {t.recommended}: {result.recommendedCourse}
+              </strong>
+              <p className="result-score">
+                {t.confidence}: {result.confidence === "high" ? t.high : t.medium}
+              </p>
+              <p className="result-score result-correct">
+                {t.correctAnswers
+                  .replace("{score}", String(result.score))
+                  .replace("{total}", String(resultTotal))}
+              </p>
+              <p>
+                {t.answered
+                  .replace("{count}", String(result.answeredCount))
+                  .replace("{total}", String(resultTotal))}
+              </p>
+            </div>
           </div>
-          <strong>
-            {t.recommended}: {result.recommendedCourse}
-          </strong>
-          <p className="result-score">
-            {t.confidence}: {result.confidence === "high" ? t.high : t.medium}
-          </p>
-          <p className="result-score result-correct">
-            {t.correctAnswers
-              .replace("{score}", String(result.score))
-              .replace("{total}", String(PLACEMENT_TOTAL))}
-          </p>
-          <p>{t.answered.replace("{count}", result.answeredCount)}</p>
-
-          {result.borderlineWith && (
-            <p className="result-note placement-borderline">
-              {t.borderline
-                .replace("{level}", LEVEL_LABEL[result.borderlineWith])
-                .replace("{current}", LEVEL_LABEL[result.placementLevel])}
-            </p>
-          )}
 
           <div className="result-columns">
             <article>
@@ -1305,13 +1775,23 @@ export default function EnglishDiagnostic({
             </article>
           </div>
 
-          {result.placementLevel === "B2" && <p className="result-note">{t.b2Note}</p>}
-          {result.placementLevel === "preA1" && !Number.isFinite(studentAge) && (
-            <p className="result-note">{t.preA1NoAge}</p>
+          {(result.borderlineWith ||
+            result.placementLevel === "B2" ||
+            technicalFlag) && (
+            <div className="english-result-notes">
+              {result.borderlineWith && (
+                <p className="result-note placement-borderline">
+                  {t.borderline
+                    .replace("{level}", RESULT_LEVEL_LABEL[result.borderlineWith])
+                    .replace("{current}", RESULT_LEVEL_LABEL[result.placementLevel])}
+                </p>
+              )}
+              {result.placementLevel === "B2" && <p className="result-note">{t.b2Note}</p>}
+              {technicalFlag && <p className="result-note">{t.technicalFlag}</p>}
+            </div>
           )}
-          {technicalFlag && <p className="result-note">{t.technicalFlag}</p>}
 
-          <div className="diagnostic-actions">
+          <div className="diagnostic-actions english-result-actions">
             <PlatformButton variant="secondary" onClick={resetTest}>
               {t.retake}
             </PlatformButton>
@@ -1333,6 +1813,7 @@ export default function EnglishDiagnostic({
   return (
     <section className="math-diagnostic-screen english-placement-screen">
       <div className="diagnostic-shell">
+        <PlacementSectionProgress session={session} t={t} />
         <PlatformButton
           className="finish-test-button"
           onClick={() => setExitConfirmationOpen(true)}
@@ -1350,9 +1831,6 @@ export default function EnglishDiagnostic({
           <p className="diagnostic-question-count">
             {t.question} {questionNumber} {t.ofQuestions}
           </p>
-          <div className="diagnostic-progress">
-            <span style={{ width: `${(questionNumber / PLACEMENT_TOTAL) * 100}%` }} />
-          </div>
           <p className="diagnostic-exit-note">{t.exitHint}</p>
         </aside>
 
@@ -1366,6 +1844,16 @@ export default function EnglishDiagnostic({
               <h2>{t.soundTitle}</h2>
               <p>{t.soundText}</p>
               <div className="diagnostic-actions">
+                <PlatformButton
+                  className="english-question-back"
+                  variant="secondary"
+                  onClick={goToPreviousQuestion}
+                  disabled={!canGoToPreviousQuestion}
+                  title={t.previousHint}
+                  aria-label={t.previousHint}
+                >
+                  ← {t.previous}
+                </PlatformButton>
                 <PlatformButton variant="secondary" onClick={runSoundCheck}>
                   🔊 {t.testSound}
                 </PlatformButton>
@@ -1494,6 +1982,16 @@ export default function EnglishDiagnostic({
               )}
 
               <div className="diagnostic-navigation english-diagnostic-navigation">
+                <PlatformButton
+                  className="english-question-back"
+                  variant="secondary"
+                  onClick={goToPreviousQuestion}
+                  disabled={!canGoToPreviousQuestion}
+                  title={t.previousHint}
+                  aria-label={t.previousHint}
+                >
+                  ← {t.previous}
+                </PlatformButton>
                 <PlatformButton variant="secondary" onClick={() => submitAnswer({ skipped: true })}>
                   {t.dontKnow}
                 </PlatformButton>
