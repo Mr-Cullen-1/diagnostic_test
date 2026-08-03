@@ -1299,8 +1299,8 @@ export const englishTestItemsKidsA1 = [
       "uz": "Matnni o‘qing va to‘g‘ri javobni tanlang."
     },
     "prompt": {
-      "ru": "The lift is out of order. Please use the stairs. What should people do?",
-      "uz": "The lift is out of order. Please use the stairs. What should people do?"
+      "ru": "Lift out of order. Please use the stairs. What should people do?",
+      "uz": "Lift out of order. Please use the stairs. What should people do?"
     },
     "options": [
       "Use the stairs",
