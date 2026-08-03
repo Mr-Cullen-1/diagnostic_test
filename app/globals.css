@@ -157,6 +157,35 @@ a { color: inherit; }
 .diagnostic-navigation { gap: 12px; }.diagnostic-side > h1 { margin-bottom: 6px; }.diagnostic-side > strong { color: #312925; font-size: 16px; line-height: 1.35; }.diagnostic-side .diagnostic-question-count { margin-top: 20px; }
 .placement-start-card > p:not(.result-note) { margin: 18px 0 0; }.placement-start-card .result-note { margin: 14px auto 24px; }.diagnostic-result-card > p + .platform-button, .diagnostic-card > p + .platform-button { margin-top: 22px; }.sound-check-card > p { margin: 14px 0 0; }.sound-check-card .diagnostic-actions { margin-top: 24px; }.listening-task { display: grid; gap: 10px; margin-top: 20px; }.listening-task p { margin: 0; color: #6e5d56; font-size: 14px; line-height: 1.5; }.diagnostic-side .diagnostic-eyebrow { margin: 0 0 10px; color: var(--primary); font-size: 11px; font-weight: 800; letter-spacing: var(--reading-label-tracking); line-height: 1.25; text-transform: uppercase; }.diagnostic-side .diagnostic-question-count { margin: 8px 0 0; color: #6a5550; font-size: 14px; font-weight: 700; letter-spacing: 0; line-height: 1.4; text-transform: none; }.diagnostic-side .diagnostic-exit-note { max-width: 260px; margin: 20px 0 0; color: #7f6459; font-size: 13px; font-weight: 600; letter-spacing: 0; line-height: 1.5; text-transform: none; }
 
+/* Responsive profile: allow the form to determine page height instead of clipping it. */
+.app-shell.screen-profile { height: auto; min-height: 100dvh; overflow: visible; }
+.screen-profile .profile-screen { min-height: calc(100dvh - 80px); height: auto; padding: clamp(24px, 3vw, 40px) clamp(24px, 5vw, 76px) clamp(36px, 5vw, 72px); align-items: flex-start; }
+.profile-form { height: auto; min-height: 0; }
+.profile-submit { margin-top: 28px; }
+.poster-carousel { flex: 0 1 400px; width: min(400px, 31%); min-width: 260px; max-width: 400px; height: clamp(460px, calc(100dvh - 156px), 680px); }
+.poster-viewport { height: 100%; }
+.poster-track { gap: 12px; will-change: transform; }
+.poster-track img { width: 100%; height: auto; aspect-ratio: 1672 / 941; object-fit: cover; }
+
+@media (min-width: 861px) {
+  .profile-form { display: flex; flex-direction: column; }
+  .profile-submit { align-self: flex-start; }
+}
+
+@media (max-width: 860px) {
+  .screen-profile .profile-screen { min-height: calc(100dvh - 68px); padding: 24px clamp(16px, 4vw, 30px) 56px; flex-direction: column; align-items: center; }
+  .profile-form { width: min(660px, 100%); max-width: 660px; }
+  .poster-carousel { order: -1; width: min(660px, 100%); min-width: 0; max-width: 660px; height: clamp(210px, 34vw, 280px); }
+  .poster-viewport { padding: 8px; }
+}
+
+@media (max-width: 520px) {
+  .screen-profile .profile-screen { padding: 18px 12px 48px; gap: 16px; }
+  .profile-form { padding: 22px 18px; }
+  .poster-carousel { height: 200px; }
+  .poster-track { gap: 9px; }
+}
+
 /* Keep a single diagnostic task fully inside the viewport. */
 .diagnostic-side .diagnostic-question-count { margin-top: 20px; }
 .app-shell.screen-math-test, .app-shell.screen-english-test { height: 100dvh; overflow: hidden; }.math-diagnostic-screen { height: calc(100dvh - 80px); min-height: 0; overflow: hidden; padding: clamp(14px, 3vw, 34px) clamp(18px, 5vw, 72px); }.diagnostic-shell { height: 100%; min-height: 0; padding-top: clamp(30px, 4vw, 52px); overflow: hidden; }.diagnostic-card { min-height: 0; overflow: auto; scrollbar-gutter: stable; }.diagnostic-back { display: none; }.number-task, .builder-task, .match-task { margin-top: clamp(14px, 2.3vw, 24px); }.diagnostic-card h2 { margin-top: clamp(14px, 2vw, 22px); }.diagnostic-submit { min-height: 48px; margin-top: clamp(14px, 2vw, 22px); }

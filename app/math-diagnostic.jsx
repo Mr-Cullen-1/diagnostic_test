@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { useMemo, useState } from "react";
 import { domainNames, localText, mathTestItems } from "./math-test-items";
 import PlatformButton from "./platform-button";
 
@@ -68,7 +69,7 @@ export default function MathDiagnostic({ locale, onBack, onHome = onBack, itemBa
   const [finished, setFinished] = useState(false);
   const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
 
-  useEffect(() => {
+  function clearAnswerDrafts() {
     setNumberDraft("");
     setTextDraft("");
     setChoiceDraft("");
@@ -76,20 +77,10 @@ export default function MathDiagnostic({ locale, onBack, onHome = onBack, itemBa
     setMatchDraft({});
     setActivePair(null);
     setMessage("");
-  }, [currentItem?.id]);
+  }
 
   const result = useMemo(() => getRecommendation(responses, itemBank), [responses, itemBank]);
   const itemPrompt = currentItem ? localText(currentItem.prompt, locale) : "";
-
-  function resetDiagnostic() {
-    setUsedIds([]);
-    setResponses([]);
-    setEstimatedLevel(2);
-    setDomainAttempts({});
-    setCurrentItem(itemBank[0]);
-    setFinishConfirmOpen(false);
-    setFinished(false);
-  }
 
   function finishDiagnostic() {
     const unanswered = itemBank.filter((item) => !usedIds.includes(item.id));
@@ -127,6 +118,7 @@ export default function MathDiagnostic({ locale, onBack, onHome = onBack, itemBa
     setEstimatedLevel(nextLevel);
     setDomainAttempts(nextAttempts);
     if (nextUsedIds.length === itemBank.length) return setFinished(true);
+    clearAnswerDrafts();
     setMessage(correct ? t.correct : "");
     setCurrentItem(chooseNextItem(itemBank, nextUsedIds, nextLevel, nextAttempts));
   }
@@ -158,7 +150,7 @@ export default function MathDiagnostic({ locale, onBack, onHome = onBack, itemBa
   return <section className="math-diagnostic-screen">
     <div className="diagnostic-shell">
       <PlatformButton className="finish-test-button" onClick={() => setFinishConfirmOpen(true)}>{finish.button}</PlatformButton>
-      <aside className="diagnostic-side"><p className="diagnostic-eyebrow">{t.eyebrow}</p><h1>{t.progress} <b>{progress}</b> {t.of} {itemBank.length}</h1><div className="diagnostic-progress"><span style={{ width: `${(progress / itemBank.length) * 100}%` }} /></div><img src="/robot-form.png" alt="" /></aside>
+      <aside className="diagnostic-side"><p className="diagnostic-eyebrow">{t.eyebrow}</p><h1>{t.progress} <b>{progress}</b> {t.of} {itemBank.length}</h1><div className="diagnostic-progress"><span style={{ width: `${(progress / itemBank.length) * 100}%` }} /></div><Image src="/robot-form.png" alt="" width={512} height={512} /></aside>
       <article className="diagnostic-card"><div className="skill-tag"><span>{t.skill}</span>{skill}</div><h2>{itemPrompt}</h2>
         {currentItem.type === "number" && <div className="number-task"><p>{t.keypad}</p><div className="number-answer" aria-live="polite">{numberDraft || "—"}</div><div className="number-keypad">{[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((digit) => <button key={digit} type="button" onClick={() => setNumberDraft((draft) => draft.length < 6 ? `${draft}${digit}` : draft)}>{digit}</button>)}<button type="button" className="keypad-action" onClick={() => setNumberDraft((draft) => draft.slice(0, -1))}>⌫</button><button type="button" className="keypad-action" onClick={() => setNumberDraft("")}>×</button></div></div>}
         {currentItem.type === "text" && <div className="written-task"><label>{locale === "ru" ? "Введи свой ответ" : "Javobingizni yozing"}<input autoFocus value={textDraft} onChange={(event) => setTextDraft(event.target.value)} placeholder={locale === "ru" ? "Напиши ответ" : "Javobni yozing"} /></label></div>}
