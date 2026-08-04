@@ -254,3 +254,96 @@ button, input, select { touch-action: manipulation; }
   .math-result-screen { height: calc(100dvh - 68px); padding: 18px 12px 32px; overflow-y: auto; }
   .math-result-screen .diagnostic-result-card { height: auto; min-height: 100%; overflow: visible; }
 }
+
+/* English results scale with the usable viewport instead of creating a second
+   page scroll inside the fixed test experience. */
+.math-diagnostic-screen.english-result-screen {
+  height: calc(100dvh - 80px);
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: clamp(10px, 2.8vh, 34px) clamp(12px, 4vw, 48px);
+}
+.math-diagnostic-screen.english-result-screen .diagnostic-result-card {
+  height: auto;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(16px, 4vh, 38px) clamp(18px, 4vw, 46px);
+}
+.english-result-screen .diagnostic-eyebrow {
+  margin-bottom: clamp(5px, 1vh, 10px);
+}
+.english-result-screen .diagnostic-result-card h1 {
+  font-size: clamp(25px, 5vh, 46px);
+}
+.english-result-screen .english-result-level {
+  gap: clamp(4px, 1vh, 10px);
+  margin: clamp(10px, 2.4vh, 22px) 0 clamp(7px, 1.6vh, 14px);
+}
+.english-result-screen .english-result-level b {
+  min-width: clamp(126px, 20vw, 156px);
+  min-height: clamp(52px, 10vh, 82px);
+  padding: clamp(8px, 1.5vh, 12px) clamp(12px, 2vw, 20px);
+  font-size: clamp(32px, 5.5vh, 46px);
+}
+.english-result-screen .result-score {
+  margin-top: clamp(4px, .9vh, 10px);
+}
+.english-result-screen .result-columns {
+  gap: clamp(7px, 1.4vw, 12px);
+  margin-top: clamp(10px, 2.5vh, 22px);
+}
+.english-result-screen .result-columns article {
+  min-height: 0;
+  padding: clamp(9px, 1.7vh, 16px);
+}
+.english-result-screen .result-note {
+  margin-top: clamp(7px, 1.5vh, 16px);
+}
+.english-result-screen .diagnostic-actions {
+  margin-top: clamp(10px, 2vh, 20px);
+}
+.english-placement-screen .diagnostic-shell {
+  grid-template-rows: minmax(0, 1fr);
+}
+.english-placement-screen .diagnostic-card {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+@media (max-width: 700px) {
+  .math-diagnostic-screen.english-result-screen {
+    height: calc(100dvh - 68px);
+    padding: 8px 10px;
+  }
+  .math-diagnostic-screen.english-result-screen .diagnostic-result-card {
+    width: 100%;
+    padding: clamp(13px, 2.8vh, 20px) clamp(12px, 4vw, 20px);
+  }
+  .english-result-screen .diagnostic-result-card h1 { font-size: clamp(23px, 4.2vh, 31px); }
+  .english-result-screen .result-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: clamp(8px, 1.8vh, 13px); }
+  .english-result-screen .result-columns article { padding: 8px; }
+  .english-result-screen .result-columns h2 { margin-bottom: 5px; font-size: 11px; }
+  .english-result-screen .result-columns p { margin: 3px 0; font-size: 11px; line-height: 1.25; }
+  .english-result-screen .diagnostic-actions { flex-direction: row; gap: 7px; margin-top: clamp(8px, 1.6vh, 12px); }
+  .english-result-screen .diagnostic-actions .text-button,
+  .english-result-screen .diagnostic-actions .orange-button { min-height: 40px; padding: 0 10px; font-size: 11px; }
+  .english-placement-screen .diagnostic-card {
+    padding-right: 2px;
+    padding-bottom: 8px;
+  }
+}
+
+@media (max-height: 640px) {
+  .english-result-screen .diagnostic-result-card { transform: scale(.9); transform-origin: center; }
+}
+
+@media (max-width: 360px) {
+  .english-result-screen .diagnostic-actions { flex-direction: column-reverse; }
+  .english-result-screen .diagnostic-actions .text-button,
+  .english-result-screen .diagnostic-actions .orange-button { width: 100%; }
+}

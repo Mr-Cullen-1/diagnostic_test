@@ -1341,7 +1341,7 @@ export default function EnglishDiagnostic({
       result.flags.tooFastCount >= 4;
 
     return (
-      <section className="math-diagnostic-screen english-placement-screen">
+      <section className="math-diagnostic-screen english-placement-screen english-result-screen">
         <div className="diagnostic-result-card">
           <p className="diagnostic-eyebrow">{t.resultEyebrow}</p>
           <h1>{t.resultTitle}</h1>
@@ -1418,7 +1418,7 @@ export default function EnglishDiagnostic({
 
   if (session.phase === "incomplete") {
     return (
-      <section className="math-diagnostic-screen english-placement-screen">
+      <section className="math-diagnostic-screen english-placement-screen english-result-screen">
         <div className="diagnostic-result-card placement-start-card">
           <p className="diagnostic-eyebrow">{t.incompleteEyebrow}</p>
           <h1>{t.incompleteTitle}</h1>
