@@ -7,9 +7,14 @@
  * Within each domain: 3 difficulty-1, 4 difficulty-2, 3 difficulty-3 items.
  */
 
-export const levelOrder = ["preA1", "A1", "A2", "B1", "B2"];
+export const levelOrder = ["preA1", "Foundation", "A1", "A2", "B1", "B2"];
 
 export const levelDefinitions = {
+  Foundation: {
+    code: "Foundation",
+    rank: 1,
+    label: { ru: "Foundation", uz: "Foundation" },
+  },
   preA1: { code: "Pre-A1", rank: 0, label: { ru: "Почти с нуля", uz: "Deyarli noldan" } },
   A1: { code: "A1", rank: 1, label: { ru: "Начинающий", uz: "Boshlang‘ich" } },
   A2: { code: "A2", rank: 2, label: { ru: "Элементарный", uz: "Elementar" } },
@@ -425,16 +430,16 @@ export const englishTestItemsKidsA1 = [
       "uz": "Matnni o‘qing va to‘g‘ri javobni tanlang."
     },
     "prompt": {
-      "ru": "English class: Monday, 4:00, Room 3. When is the class?",
-      "uz": "English class: Monday, 4:00, Room 3. When is the class?"
+      "ru": "Please put your coat on the hook by the door. What should you do?",
+      "uz": "Please put your coat on the hook by the door. What should you do?"
     },
     "options": [
-      "Monday at 4:00",
-      "Tuesday at 3:00",
-      "Monday at 3:00",
-      "Friday at 4:00"
+      "Put the coat on the hook.",
+      "Wear the coat outside.",
+      "Open the door.",
+      "Find a new coat."
     ],
-    "answer": "Monday at 4:00",
+    "answer": "Put the coat on the hook.",
     "audioText": null
   },
   {
@@ -1245,16 +1250,16 @@ export const englishTestItemsKidsA1 = [
       "uz": "Matnni o‘qing va to‘g‘ri javobni tanlang."
     },
     "prompt": {
-      "ru": "Art club: Tuesday and Thursday, 3:30–4:30. On which days does the club meet?",
-      "uz": "Art club: Tuesday and Thursday, 3:30–4:30. On which days does the club meet?"
+      "ru": "Leo cannot play football on Thursday because he has a piano lesson. Why cannot Leo play football?",
+      "uz": "Leo cannot play football on Thursday because he has a piano lesson. Why cannot Leo play football?"
     },
     "options": [
-      "Tuesday and Thursday",
-      "Monday and Wednesday",
-      "Thursday only",
-      "Every day"
+      "He has a piano lesson.",
+      "He does not like football.",
+      "He is at the park.",
+      "He has no football."
     ],
-    "answer": "Tuesday and Thursday",
+    "answer": "He has a piano lesson.",
     "audioText": null
   },
   {
@@ -1299,8 +1304,8 @@ export const englishTestItemsKidsA1 = [
       "uz": "Matnni o‘qing va to‘g‘ri javobni tanlang."
     },
     "prompt": {
-      "ru": "Lift out of order. Please use the stairs. What should people do?",
-      "uz": "Lift out of order. Please use the stairs. What should people do?"
+      "ru": "The lift is out of order. Please use the stairs. What should people do?",
+      "uz": "The lift is out of order. Please use the stairs. What should people do?"
     },
     "options": [
       "Use the stairs",

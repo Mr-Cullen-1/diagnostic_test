@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import PlatformButton from "./platform-button";
+import { enforceOneLevelDowngrade } from "./english-placement-policy";
 import {
   domainNames,
   englishTestItemsKidsA1,
@@ -11,25 +12,81 @@ import {
 } from "./english-test-items-kids-a1";
 import { englishTestItemsA2B1 } from "./english-test-items-a2-b1(1)";
 import { englishTestItemsB2 } from "./english-test-items-b2";
+import { englishTestItemsFoundation } from "./english-test-items-foundation";
+import {
+  evaluateInitialLane,
+  getEnglishPlacementLane,
+  getLaneTestPlan,
+  getSelfReportGroup,
+  SELF_REPORT_OPTIONS,
+} from "./english-placement-routing";
+
+const placementLevelArt = {
+  zero: "/placement-level-zero.png",
+  words: "/placement-level-words.png",
+  read: "/placement-level-read.png",
+  simpleTalk: "/placement-level-simple-talk.png",
+  hesitantTalk: "/placement-level-hesitant-talk.png",
+  fluent: "/placement-level-fluent.png",
+};
 
 export const englishPlacementItems = [
   ...englishTestItemsKidsA1,
+  ...englishTestItemsFoundation,
   ...englishTestItemsA2B1,
   ...englishTestItemsB2,
 ];
 
-export const PLACEMENT_TOTAL = 40;
-export const START_TOTAL = 14;
-export const ADAPTIVE_TOTAL = 16;
-export const CONFIRM_TOTAL = 10;
+export const PLACEMENT_TOTAL = 15;
+export const START_TOTAL = 15;
+export const ADAPTIVE_TOTAL = 0;
+
+const PLACEMENT_SECTIONS = [
+  { stage: "screen", total: START_TOTAL },
+];
 
 const LEVEL_INDEX = Object.fromEntries(levelOrder.map((level, index) => [level, index]));
 const LEVEL_LABEL = {
   preA1: "Pre-A1",
+  Foundation: "Foundation",
   A1: "A1",
   A2: "A2",
   B1: "B1",
   B2: "B2",
+};
+
+const RESULT_LEVEL_LABEL = {
+  ...LEVEL_LABEL,
+  preA1: "Kids",
+};
+
+const SELF_REPORT_COPY = {
+  ru: {
+    title: "Как вы оцениваете свой английский?",
+    text: "Выберите вариант, который лучше всего описывает вас. Это поможет подобрать подходящие вопросы.",
+    options: {
+      zero: "Я начинаю с нуля",
+      words: "Я знаю отдельные слова и простые фразы",
+      read: "Я могу читать простые слова и короткие тексты",
+      simpleTalk: "Я могу свободно написать 2–3 предложения, допуская лишь небольшие грамматические ошибки",
+      hesitantTalk: "Я могу немного рассказать о знакомой теме, но говорю с паузами и не всегда уверенно",
+      fluent: "Я свободно говорю и понимаю английский",
+    },
+    continue: "Продолжить",
+  },
+  uz: {
+    title: "Ingliz tilingizni qanday baholaysiz?",
+    text: "Sizni eng yaxshi tasvirlaydigan variantni tanlang. Bu mos savollarni tanlashga yordam beradi.",
+    options: {
+      zero: "Men ingliz tilini noldan boshlayman",
+      words: "Men alohida so'zlar va oddiy iboralarni bilaman",
+      read: "Men oddiy so'zlar va qisqa matnlarni o'qiy olaman",
+      simpleTalk: "Men 2–3 ta gapni erkin yoza olaman va faqat kichik grammatik xatolarga yo‘l qo‘yaman",
+      hesitantTalk: "Men tanish mavzu haqida biroz gapira olaman, lekin pauza qilaman va har doim ham ishonchli emasman",
+      fluent: "Men ingliz tilida erkin gaplashaman va tushunaman",
+    },
+    continue: "Davom etish",
+  },
 };
 
 const ADAPTIVE_DOMAIN_BLOCKS = [
@@ -69,14 +126,19 @@ const copy = {
   ru: {
     eyebrow: "Английский · адаптивный Placement",
     introTitle: "Узнай, с какого курса лучше начать",
-    introText: "Тест сам подберёт сложность. Всего 40 заданий в трёх частях.",
+    introText: "Тест сам подберёт сложность. До 40 заданий в трёх частях.",
     introNote: "Уровень и школьный класс выбирать не нужно — система определит точку старта по ответам.",
     start: "Начать тест",
     resume: "Продолжить тест",
     exit: "Завершить тест",
-    exitHint: "Все незаданные задания будут засчитаны как неверные, после чего появится результат.",
-    exitConfirmTitle: "Завершить тест?",
+    exitHint: "Если завершить тест сейчас, уровень не будет определён. Чтобы получить рекомендацию, нужно ответить на все вопросы.",
+    exitConfirmTitle: "Завершить тест без результата?",
     cancel: "Продолжить тест",
+    incompleteEyebrow: "Тест не завершён",
+    incompleteTitle: "Уровень пока не определён",
+    incompleteText: "Тест завершён до того, как были выполнены все необходимые задания, поэтому система не может надёжно определить уровень.",
+    incompleteRetry: "Пройди тест заново и ответь на все вопросы, чтобы получить рекомендацию по курсу.",
+    incompleteProgress: "Выполнено заданий: {count} из {total}",
     part: "Блок",
     ofParts: "из 3",
     question: "Задание",
@@ -86,7 +148,12 @@ const copy = {
       adaptive: "Адаптивная проверка",
       confirm: "Подтверждение границы",
     },
+    sectionProgressFirst: "Прогресс первого блока",
+    sectionProgressRemaining: "Прогресс двух оставшихся блоков",
+    sectionProgressPart: "Блок {part}: {current} из {total}",
     checking: "Проверяем",
+    previous: "Назад",
+    previousHint: "Предыдущий вопрос",
     answer: "Ответить",
     dontKnow: "Не знаю",
     saved: "Ответ сохранён",
@@ -118,7 +185,7 @@ const copy = {
     improve: "Стоит потренировать",
     noStrong: "Нет навыка с устойчивым результатом 70%+.",
     noImprove: "Критичных пробелов по проверенным навыкам не обнаружено.",
-    answered: "Отвечено: {count} из 40",
+    answered: "Отвечено: {count} из {total}",
     b2Note: "B2 здесь — рекомендация точки старта курса, а не официальный сертификат CEFR.",
     preA1NoAge: "После уточнения возраста: Kids до 10 лет включительно или A1 Foundation для старших учеников.",
     retake: "Пройти заново",
@@ -128,14 +195,19 @@ const copy = {
   uz: {
     eyebrow: "Ingliz tili · moslashuvchan Placement",
     introTitle: "Qaysi kursdan boshlash yaxshiroq ekanini bilib oling",
-    introText: "Test qiyinlikni o‘zi moslaydi. Uch qismda jami 40 ta topshiriq bor.",
+    introText: "Test qiyinlikni o‘zi moslaydi. Uch qismda 40 tagacha topshiriq bor.",
     introNote: "Daraja va maktab sinfini tanlash shart emas — tizim boshlash nuqtasini javoblar asosida aniqlaydi.",
     start: "Testni boshlash",
     resume: "Testni davom ettirish",
     exit: "Testni yakunlash",
-    exitHint: "Javob berilmagan barcha topshiriqlar noto‘g‘ri deb hisoblanadi, so‘ng natija ko‘rsatiladi.",
-    exitConfirmTitle: "Testni yakunlaysizmi?",
+    exitHint: "Testni hozir yakunlasangiz, darajangiz aniqlanmaydi. Tavsiya olish uchun barcha savollarga javob berish kerak.",
+    exitConfirmTitle: "Testni natijasiz yakunlaysizmi?",
     cancel: "Testni davom ettirish",
+    incompleteEyebrow: "Test yakunlanmadi",
+    incompleteTitle: "Darajangiz hali aniqlanmadi",
+    incompleteText: "Siz barcha kerakli savollarga javob bermasdan testni yakunladingiz, shuning uchun tizim darajangizni ishonchli aniqlay olmaydi.",
+    incompleteRetry: "Kurs bo‘yicha tavsiya olish uchun testni qayta boshlang va barcha savollarga javob bering.",
+    incompleteProgress: "Bajarilgan topshiriqlar: {count} / {total}",
     part: "Blok",
     ofParts: "/ 3",
     question: "Topshiriq",
@@ -145,7 +217,12 @@ const copy = {
       adaptive: "Moslashuvchan tekshiruv",
       confirm: "Chegarani tasdiqlash",
     },
+    sectionProgressFirst: "Birinchi blok jarayoni",
+    sectionProgressRemaining: "Qolgan ikki blok jarayoni",
+    sectionProgressPart: "{part}-blok: {current} / {total}",
     checking: "Tekshirilmoqda",
+    previous: "Ortga",
+    previousHint: "Oldingi savol",
     answer: "Javob berish",
     dontKnow: "Bilmayman",
     saved: "Javob saqlandi",
@@ -177,7 +254,7 @@ const copy = {
     improve: "Mashq qilish kerak",
     noStrong: "70%+ barqaror natija ko‘rsatgan yo‘nalish yo‘q.",
     noImprove: "Tekshirilgan ko‘nikmalarda jiddiy bo‘shliq topilmadi.",
-    answered: "Javob berildi: {count} / 40",
+    answered: "Javob berildi: {count} / {total}",
     b2Note: "Bu yerdagi B2 — kursni boshlash tavsiyasi, rasmiy CEFR sertifikati emas.",
     preA1NoAge: "Yosh aniqlangach: 10 yoshgacha Kids, kattaroq o‘quvchilar uchun A1 Foundation.",
     retake: "Qayta topshirish",
@@ -510,14 +587,57 @@ export function buildConfirmationItems({
   });
 }
 
-function highestSupportedAtOrBelow(responses, ceilingLevel) {
-  const { supported } = getSupportedLevels(responses);
-  const ceilingRank = LEVEL_INDEX[ceilingLevel];
-  const eligible = supported.filter((level) => LEVEL_INDEX[level] <= ceilingRank);
-  return (
-    eligible.sort((left, right) => LEVEL_INDEX[right] - LEVEL_INDEX[left])[0] ??
-    "preA1"
+const ROUTE_DOMAIN_PATTERN = [
+  ["languageUse", "reading", "listening", "languageUse", "reading", "listening"],
+  ["reading", "languageUse", "listening", "reading", "languageUse", "listening"],
+  ["languageUse", "reading", "listening"],
+];
+
+export function buildLaneItems({ itemBank = englishPlacementItems, lane, seed }) {
+  const usedIds = new Set();
+  return getLaneTestPlan(lane).flatMap(({ level, count }, groupIndex) =>
+    Array.from({ length: count }, (_, itemIndex) => {
+      const item = pickItem(
+        itemBank,
+        usedIds,
+        {
+          level,
+          domain: ROUTE_DOMAIN_PATTERN[groupIndex][itemIndex],
+          difficulty: (itemIndex % 3) + 1,
+        },
+        seed,
+        `lane-${lane.kind}-${groupIndex}-${itemIndex}`
+      );
+      usedIds.add(item.id);
+      return item;
+    })
   );
+}
+
+function buildPlacementResult({
+  placementLevel,
+  responses,
+  session,
+  confidence = "medium",
+  borderlineWith = null,
+  completionType = "FULL_PLACEMENT",
+}) {
+  const tooFastCount = responses.filter((response) => response.tooFast).length;
+  const technicalIssue = Boolean(session.flags?.audioError || tooFastCount >= 4);
+  return {
+    placementLevel,
+    recommendedCourse: placementLevel === "preA1" ? "Kids" : placementLevel,
+    confidence: technicalIssue ? "medium" : confidence,
+    borderlineWith,
+    answeredCount: responses.length,
+    totalQuestions: session.totalQuestions ?? responses.length,
+    score: responses.filter((response) => response.correct).length,
+    levelStats: calculateLevelStats(responses),
+    skillStats: calculateSkillStats(responses),
+    completionType,
+    flags: { ...session.flags, tooFastCount },
+    responses,
+  };
 }
 
 function routeCourse(placementLevel, studentAge) {
@@ -526,6 +646,46 @@ function routeCourse(placementLevel, studentAge) {
     return studentAge <= 10 ? "Kids" : "A1 Foundation";
   }
   return "Pre-A1 route";
+}
+
+export function decideEarlyKidsResult({
+  responses,
+  startStats,
+  startInconsistent = false,
+  attemptFlags = {},
+}) {
+  const levelStats = calculateLevelStats(responses);
+  const skillStats = calculateSkillStats(responses);
+  const tooFastCount = responses.filter((response) => response.tooFast).length;
+  const audioError = Boolean(attemptFlags.audioError);
+  const confidence =
+    startInconsistent || audioError || tooFastCount >= 4 ? "medium" : "high";
+
+  return {
+    placementLevel: "preA1",
+    recommendedCourse: "Kids",
+    confidence,
+    borderlineWith: null,
+    answeredCount: responses.length,
+    totalQuestions: responses.length,
+    score: responses.filter((response) => response.correct).length,
+    adaptivePath: [],
+    startStats,
+    confirmStats: {},
+    levelStats,
+    skillStats,
+    confirmationPair: null,
+    reasonCode: "START_KIDS_EARLY_EXIT",
+    completionType: "SECTION_1_KIDS",
+    endedEarly: false,
+    flags: {
+      startInconsistent,
+      inconsistency: false,
+      audioError,
+      tooFastCount,
+    },
+    responses,
+  };
 }
 
 function countConfirmByLevel(responses, level) {
@@ -544,6 +704,7 @@ export function decideFinalResult({
   adaptivePath = [],
   startStats,
   startInconsistent = false,
+  preConfirmationProbe = null,
   studentAge,
   attemptFlags = {},
 }) {
@@ -585,10 +746,10 @@ export function decideFinalResult({
     placementLevel = lower;
     reasonCode = "LOWER_CONFIRMED_UPPER_REJECTED";
   } else if (lowerConfirm.correct <= 3 && upperConfirm.correct <= 3) {
-    const safeCeiling = oneLevelDown(lower);
-    placementLevel = highestSupportedAtOrBelow(responses, safeCeiling);
+    placementLevel = lower;
     confidence = "medium";
-    reasonCode = "PAIR_TOO_HIGH_RECALCULATED";
+    inconsistency = true;
+    reasonCode = "PAIR_TOO_HIGH_CAPPED_AT_LOWER";
   } else if (lowerConfirm.correct <= 3 && upperConfirm.correct >= 4) {
     placementLevel = lower;
     confidence = "medium";
@@ -598,6 +759,19 @@ export function decideFinalResult({
     placementLevel = lower;
     confidence = "medium";
     reasonCode = "UNCLASSIFIED_SAFE_LOWER";
+  }
+
+  const downgradeDecision = enforceOneLevelDowngrade({
+    placementLevel,
+    referenceLevel: preConfirmationProbe,
+    levelOrder,
+  });
+  if (downgradeDecision.applied) {
+    placementLevel = downgradeDecision.placementLevel;
+    borderlineWith = null;
+    confidence = "medium";
+    inconsistency = true;
+    reasonCode = "ONE_LEVEL_DOWNGRADE_FLOOR";
   }
 
   const tooFastCount = responses.filter((response) => response.tooFast).length;
@@ -615,6 +789,7 @@ export function decideFinalResult({
     confidence,
     borderlineWith,
     answeredCount: responses.length,
+    totalQuestions: responses.length,
     score,
     adaptivePath,
     startStats,
@@ -625,7 +800,12 @@ export function decideFinalResult({
     levelStats,
     skillStats,
     confirmationPair,
+    preConfirmationProbe,
+    calculatedPlacementLevel: downgradeDecision.calculatedPlacementLevel,
+    downgradeFloor: downgradeDecision.floorLevel,
+    downgradeFloorApplied: downgradeDecision.applied,
     reasonCode,
+    completionType: "FULL_PLACEMENT",
     flags: {
       startInconsistent,
       inconsistency,
@@ -640,7 +820,7 @@ export function validateEnglishPlacementBank(itemBank = englishPlacementItems) {
   const errors = [];
   const ids = new Set();
 
-  if (itemBank.length !== 150) errors.push(`Expected 150 items, received ${itemBank.length}.`);
+  if (itemBank.length !== 180) errors.push(`Expected 180 items, received ${itemBank.length}.`);
 
   itemBank.forEach((item) => {
     if (ids.has(item.id)) errors.push(`Duplicate item id: ${item.id}`);
@@ -676,27 +856,14 @@ export function validateEnglishPlacementBank(itemBank = englishPlacementItems) {
     });
   });
 
-  const startItems = itemBank.filter((item) => Number.isInteger(item.startOrder));
-  if (startItems.length !== START_TOTAL) errors.push("Start stage must contain exactly 14 tagged items.");
-  const orders = startItems.map((item) => item.startOrder).sort((a, b) => a - b);
-  if (orders.some((order, index) => order !== index + 1)) {
-    errors.push("startOrder values must be exactly 1..14.");
-  }
-
   if (errors.length) throw new Error(`Invalid English Placement bank:\n${errors.join("\n")}`);
   return true;
 }
 
-function getStartPlan(itemBank) {
-  return itemBank
-    .filter((item) => Number.isInteger(item.startOrder))
-    .sort((left, right) => left.startOrder - right.startOrder);
-}
-
 function createInitialSession(seed = Date.now()) {
   return {
-    version: 3,
-    phase: "intro",
+    version: 8,
+    phase: "self-report",
     seed,
     queue: [],
     currentIndex: 0,
@@ -705,6 +872,10 @@ function createInitialSession(seed = Date.now()) {
     adaptiveBlockIndex: 0,
     adaptivePath: [],
     confirmationPair: null,
+    selfReport: null,
+    selfReportGroup: null,
+    lane: null,
+    totalQuestions: 0,
     startStats: null,
     startInconsistent: false,
     soundReady: false,
@@ -712,8 +883,26 @@ function createInitialSession(seed = Date.now()) {
     audioPlays: {},
     flags: { audioError: false },
     result: null,
+    incomplete: null,
+    navigationHistory: [],
+    navigationFuture: [],
     startedAt: null,
   };
+}
+
+function snapshotSessionForNavigation(session) {
+  const snapshot = { ...session };
+  delete snapshot.navigationHistory;
+  delete snapshot.navigationFuture;
+  return snapshot;
+}
+
+function mergeAudioPlayCounts(previousCounts = {}, currentCounts = {}) {
+  const merged = { ...previousCounts };
+  Object.entries(currentCounts).forEach(([itemId, count]) => {
+    merged[itemId] = Math.max(merged[itemId] ?? 0, count ?? 0);
+  });
+  return merged;
 }
 
 function safeLoadSession(storageKey, itemMap) {
@@ -722,10 +911,21 @@ function safeLoadSession(storageKey, itemMap) {
     const raw = window.localStorage.getItem(storageKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed?.version !== 3 || parsed?.phase === "result") return null;
+    if (
+      parsed?.version !== 8 ||
+      ["result", "incomplete", "self-report"].includes(parsed?.phase)
+    ) return null;
     const allIds = [...(parsed.queue ?? []), ...(parsed.responses ?? []).map((item) => item.itemId)];
     if (allIds.some((id) => !itemMap.has(id))) return null;
-    return parsed;
+    return {
+      ...parsed,
+      navigationHistory: Array.isArray(parsed.navigationHistory)
+        ? parsed.navigationHistory
+        : [],
+      navigationFuture: Array.isArray(parsed.navigationFuture)
+        ? parsed.navigationFuture
+        : [],
+    };
   } catch {
     return null;
   }
@@ -734,7 +934,7 @@ function safeLoadSession(storageKey, itemMap) {
 function saveSession(storageKey, session) {
   if (typeof window === "undefined") return;
   try {
-    if (session.phase === "intro" || session.phase === "result") {
+    if (["self-report", "result", "incomplete"].includes(session.phase)) {
       window.localStorage.removeItem(storageKey);
     } else {
       window.localStorage.setItem(storageKey, JSON.stringify(session));
@@ -771,108 +971,28 @@ function buildResponse({ session, item, answer, correct, skipped, answerTimeMs }
   };
 }
 
-function transitionAfterQueue({ session, responses, itemBank, studentAge }) {
-  const usedIds = responses.map((response) => response.itemId);
-
-  if (session.phase === "start") {
-    const start = getStartProbe(responses.filter((response) => response.stage === "start"));
-    const blockItems = buildAdaptiveBlock({
-      itemBank,
-      usedIds,
-      probeLevel: start.probeLevel,
-      blockIndex: 0,
-      seed: session.seed,
-    });
-    return {
-      ...session,
-      phase: "adaptive",
-      queue: blockItems.map((item) => item.id),
-      currentIndex: 0,
-      responses,
-      probeLevel: start.probeLevel,
-      adaptiveBlockIndex: 0,
-      startStats: start.startStats,
-      startInconsistent: start.inconsistent,
-    };
-  }
-
-  if (session.phase === "adaptive") {
-    const blockResponses = responses.filter(
-      (response) =>
-        response.stage === "adaptive" &&
-        response.blockIndex === session.adaptiveBlockIndex
-    );
-    const correctCount = blockResponses.filter((response) => response.correct).length;
-    const blockResult = classifyAdaptiveBlock(correctCount);
-    const pathEntry = `${LEVEL_LABEL[session.probeLevel]}:${blockResult}`;
-    const adaptivePath = [...session.adaptivePath, pathEntry];
-    const nextProbe = updateProbeAfterBlock(session.probeLevel, blockResult);
-
-    if (session.adaptiveBlockIndex < 3) {
-      const nextBlockIndex = session.adaptiveBlockIndex + 1;
-      const blockItems = buildAdaptiveBlock({
-        itemBank,
-        usedIds,
-        probeLevel: nextProbe,
-        blockIndex: nextBlockIndex,
-        seed: session.seed,
-      });
-      return {
-        ...session,
-        queue: blockItems.map((item) => item.id),
-        currentIndex: 0,
-        responses,
-        probeLevel: nextProbe,
-        adaptiveBlockIndex: nextBlockIndex,
-        adaptivePath,
-      };
-    }
-
-    const first30 = responses.slice(0, START_TOTAL + ADAPTIVE_TOTAL);
-    const confirmation = getConfirmationPair(first30);
-    const confirmItems = buildConfirmationItems({
-      itemBank,
-      usedIds,
-      pair: confirmation.pair,
-      seed: session.seed,
-    });
-
-    return {
-      ...session,
-      phase: "confirm",
-      queue: confirmItems.map((item) => item.id),
-      currentIndex: 0,
-      responses,
-      probeLevel: nextProbe,
-      adaptivePath,
-      confirmationPair: confirmation.pair,
-    };
-  }
-
-  if (session.phase === "confirm") {
-    const result = decideFinalResult({
-      responses,
-      confirmationPair: session.confirmationPair,
-      adaptivePath: session.adaptivePath,
-      startStats: session.startStats,
-      startInconsistent: session.startInconsistent,
-      studentAge,
-      attemptFlags: session.flags,
-    });
+function transitionAfterQueue({ session, responses }) {
+  if (session.phase === "screen") {
+    const decision = evaluateInitialLane({ lane: session.lane, responses });
     return {
       ...session,
       phase: "result",
       queue: [],
       currentIndex: 0,
       responses,
-      result,
+      result: buildPlacementResult({
+        placementLevel: decision.placementLevel,
+        responses,
+        session,
+        confidence: decision.confidence,
+      }),
     };
   }
 
   return { ...session, responses };
 }
 
-function advanceSession({ session, response, itemBank, studentAge }) {
+function advanceSession({ session, response }) {
   const responses = [...session.responses, response];
   const hasNextInQueue = session.currentIndex + 1 < session.queue.length;
 
@@ -884,7 +1004,7 @@ function advanceSession({ session, response, itemBank, studentAge }) {
     };
   }
 
-  return transitionAfterQueue({ session, responses, itemBank, studentAge });
+  return transitionAfterQueue({ session, responses });
 }
 
 function isCorrectAnswer(item, answer) {
@@ -909,10 +1029,78 @@ function optionLabel(option) {
   return typeof option === "string" ? option : option?.text ?? "";
 }
 
+export function getPlacementSectionProgress(session) {
+  const responses = session.responses ?? [];
+  const activeStage = session.phase === "screen" ? "screen" : null;
+  const visibleSections = PLACEMENT_SECTIONS;
+
+  return visibleSections.map(({ stage, total }) => {
+    const partNumber = PLACEMENT_SECTIONS.findIndex((section) => section.stage === stage) + 1;
+    const completed = responses.filter((response) => response.stage === stage).length;
+    const current = Math.min(total, completed + (activeStage === stage ? 1 : 0));
+
+    return {
+      stage,
+      partNumber,
+      total,
+      current,
+      percent: total ? (current / total) * 100 : 0,
+      isActive: activeStage === stage,
+      isComplete: completed >= total,
+    };
+  });
+}
+
+function PlacementSectionProgress({ session, t, variant = "test" }) {
+  const sections = getPlacementSectionProgress(session);
+  const progressGroupLabel =
+    sections.length === 1 ? t.sectionProgressFirst : t.sectionProgressRemaining;
+
+  return (
+    <div
+      className={`english-section-progress english-section-progress-${variant} english-section-progress-count-${sections.length}`}
+      aria-label={progressGroupLabel}
+    >
+      {sections.map((section) => {
+        const stateClass = section.isActive
+          ? "is-active"
+          : section.isComplete
+            ? "is-complete"
+            : "is-upcoming";
+        const progressLabel = t.sectionProgressPart
+          .replace("{part}", String(section.partNumber))
+          .replace("{current}", String(section.current))
+          .replace("{total}", String(section.total));
+
+        return (
+          <div
+            key={section.stage}
+            className={`english-section-progress-item ${stateClass}`}
+          >
+            <span className="english-section-progress-number" aria-hidden="true">
+              {section.partNumber}
+            </span>
+            <span
+              className="english-section-progress-track"
+              role="progressbar"
+              aria-label={progressLabel}
+              aria-valuemin={0}
+              aria-valuemax={section.total}
+              aria-valuenow={section.current}
+            >
+              <span style={{ width: `${section.percent}%` }} />
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function EnglishDiagnostic({
   locale = "ru",
   studentAge,
-  storageKey = "english-placement-v3",
+  storageKey = "english-placement-v7",
   attemptSeed = undefined,
   itemBank = englishPlacementItems,
   onHome = () => {},
@@ -920,6 +1108,7 @@ export default function EnglishDiagnostic({
   onComplete = undefined,
 }) {
   const t = copy[locale] ?? copy.ru;
+  const selfReportText = SELF_REPORT_COPY[locale] ?? SELF_REPORT_COPY.ru;
   const itemMap = useMemo(
     () => new Map(itemBank.map((item) => [item.id, item])),
     [itemBank]
@@ -934,6 +1123,7 @@ export default function EnglishDiagnostic({
   const [choiceDraft, setChoiceDraft] = useState("");
   const [textDraft, setTextDraft] = useState("");
   const [sequenceDraft, setSequenceDraft] = useState([]);
+  const [selfReportDraft, setSelfReportDraft] = useState("read");
   const [message, setMessage] = useState("");
   const [soundProblemOpen, setSoundProblemOpen] = useState(false);
   const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
@@ -954,11 +1144,15 @@ export default function EnglishDiagnostic({
     : null;
 
   useEffect(() => {
-    questionStartedAtRef.current = Date.now();
-  }, [currentItem?.id]);
+    if (currentItem) questionStartedAtRef.current = Date.now();
+  }, [currentItem]);
 
   useEffect(() => {
-    if (session.phase !== "result" || !session.result || completionReportedRef.current) return;
+    if (
+      session.phase !== "result" ||
+      !session.result ||
+      completionReportedRef.current
+    ) return;
     completionReportedRef.current = true;
     onComplete?.(session.result);
   }, [session.phase, session.result, onComplete]);
@@ -977,12 +1171,20 @@ export default function EnglishDiagnostic({
     ? seededShuffle(currentItem.options, session.seed, `options-${currentItem.id}`)
     : [];
 
-  const partNumber = session.phase === "start" ? 1 : session.phase === "adaptive" ? 2 : 3;
+  const partNumber = session.phase === "confirm" ? 2 : 1;
   const questionNumber = session.responses.length + 1;
+  const questionTotal = session.totalQuestions || START_TOTAL;
+  const currentPartTitle = session.phase === "confirm" ? t.parts.confirm : t.parts.start;
   const currentDomain = currentItem ? localText(domainNames[currentItem.domain], locale) : "";
   const currentInstruction = currentItem ? localText(currentItem.instruction, locale) : "";
   const currentPrompt = currentItem ? localText(currentItem.prompt, locale) : "";
   const audioPlayCount = currentItem ? session.audioPlays[currentItem.id] ?? 0 : 0;
+  const navigationHistory = session.navigationHistory ?? [];
+  const previousNavigationEntry = navigationHistory[navigationHistory.length - 1] ?? null;
+  const canGoToPreviousQuestion = Boolean(
+    previousNavigationEntry &&
+      previousNavigationEntry.before?.phase === session.phase
+  );
 
   function showSavedMessage() {
     setMessage(t.saved);
@@ -997,15 +1199,92 @@ export default function EnglishDiagnostic({
     setMessage("");
   }
 
-  function beginTest() {
-    const seed = attemptSeed ?? Date.now();
-    const startItems = getStartPlan(itemBank);
+  function hydrateAnswerDraft(response) {
+    setChoiceDraft("");
+    setTextDraft("");
+    setSequenceDraft([]);
+    setMessage("");
+
+    if (!response || response.skipped || response.answer == null) return;
+    const item = itemMap.get(response.itemId);
+    if (!item) return;
+
+    if (item.type === "text") {
+      setTextDraft(String(response.answer));
+    } else if (item.type === "sequence") {
+      setSequenceDraft(Array.isArray(response.answer) ? [...response.answer] : []);
+    } else {
+      setChoiceDraft(String(response.answer));
+    }
+  }
+
+  function goToPreviousQuestion() {
+    if (!canGoToPreviousQuestion || !previousNavigationEntry) return;
+
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+
+    const restored = previousNavigationEntry.before;
+    const nextSession = {
+      ...restored,
+      soundReady: Boolean(restored.soundReady || session.soundReady),
+      soundCheckPlayed: Boolean(restored.soundCheckPlayed || session.soundCheckPlayed),
+      audioPlays: mergeAudioPlayCounts(restored.audioPlays, session.audioPlays),
+      flags: {
+        ...restored.flags,
+        audioError: Boolean(restored.flags?.audioError || session.flags?.audioError),
+      },
+      navigationHistory: navigationHistory.slice(0, -1),
+      navigationFuture: [
+        previousNavigationEntry,
+        ...(session.navigationFuture ?? []),
+      ],
+    };
+
+    hydrateAnswerDraft(previousNavigationEntry.response);
+    setSession(nextSession);
+    onProgress?.({
+      status: "in_progress",
+      answeredCount: nextSession.responses.length,
+      responses: nextSession.responses,
+      phase: nextSession.phase,
+      navigation: "back",
+    });
+  }
+
+  function beginTest(selfReport) {
+    const lane = getEnglishPlacementLane({ age: studentAge, selfReport });
+    const seed = attemptSeed ?? session.seed;
     completionReportedRef.current = false;
     resetAnswerDrafts();
+    if (lane.kind === "directKids") {
+      const directSession = {
+        ...createInitialSession(seed),
+        phase: "result",
+        selfReport,
+        selfReportGroup: getSelfReportGroup(selfReport),
+        lane,
+        result: buildPlacementResult({
+          placementLevel: "preA1",
+          responses: [],
+          session: { flags: { audioError: false }, totalQuestions: 0 },
+          confidence: "high",
+          completionType: "SELF_REPORT_KIDS",
+        }),
+      };
+      setSession(directSession);
+      return;
+    }
+    const laneItems = buildLaneItems({ itemBank, lane, seed });
     setSession({
       ...createInitialSession(seed),
-      phase: "start",
-      queue: startItems.map((item) => item.id),
+      phase: "screen",
+      queue: laneItems.map((item) => item.id),
+      selfReport,
+      selfReportGroup: getSelfReportGroup(selfReport),
+      lane,
+      totalQuestions: START_TOTAL,
       startedAt: new Date().toISOString(),
     });
   }
@@ -1017,50 +1296,37 @@ export default function EnglishDiagnostic({
     setSession(createInitialSession(attemptSeed ?? Date.now()));
   }
 
-  function completeExitedSession() {
-    let nextSession = session;
-    let skippedCount = 0;
-
-    while (nextSession.phase !== "result" && skippedCount < PLACEMENT_TOTAL) {
-      const nextItem = itemMap.get(nextSession.queue[nextSession.currentIndex]);
-      if (!nextItem) {
-        throw new Error("English Placement cannot finish because the current item is missing.");
-      }
-
-      const skippedResponse = buildResponse({
-        session: nextSession,
-        item: nextItem,
-        answer: null,
-        correct: false,
-        skipped: true,
-        answerTimeMs: 0,
-      });
-      nextSession = advanceSession({
-        session: nextSession,
-        response: skippedResponse,
-        itemBank,
-        studentAge,
-      });
-      skippedCount += 1;
-    }
-
-    if (nextSession.phase !== "result") {
-      throw new Error("English Placement did not reach a final result after exit.");
-    }
-
-    return nextSession;
-  }
-
   function exitTest() {
     setExitConfirmationOpen(false);
-    const completedSession = completeExitedSession();
+    if (typeof window !== "undefined") window.localStorage.removeItem(storageKey);
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+
+    const incompleteSession = {
+      ...session,
+      phase: "incomplete",
+      queue: [],
+      currentIndex: 0,
+      result: null,
+      incomplete: {
+        reasonCode: "STUDENT_EXITED_BEFORE_COMPLETION",
+        answeredCount: session.responses.length,
+        totalQuestions: session.totalQuestions || START_TOTAL,
+        endedAt: new Date().toISOString(),
+      },
+      navigationHistory: [],
+      navigationFuture: [],
+    };
     resetAnswerDrafts();
     completionReportedRef.current = false;
-    setSession(completedSession);
+    setSession(incompleteSession);
     onProgress?.({
-      status: "complete",
-      answeredCount: completedSession.responses.length,
-      responses: completedSession.responses,
+      status: "incomplete",
+      phase: "incomplete",
+      reasonCode: incompleteSession.incomplete.reasonCode,
+      answeredCount: incompleteSession.responses.length,
+      responses: incompleteSession.responses,
     });
   }
 
@@ -1190,26 +1456,70 @@ export default function EnglishDiagnostic({
       skipped,
       answerTimeMs,
     });
-    const nextSession = advanceSession({
-      session,
+    const sessionBeforeAnswer = snapshotSessionForNavigation(session);
+    const currentFutureEntry = (session.navigationFuture ?? [])[0] ?? null;
+    const isRevisitedQuestion = currentFutureEntry?.response?.itemId === currentItem.id;
+    const canKeepFutureAnswers = isRevisitedQuestion;
+    const advancedSession = advanceSession({
+      session: sessionBeforeAnswer,
       response,
-      itemBank,
-      studentAge,
     });
+    const remainsInCurrentSection = advancedSession.phase === session.phase;
+    let navigationFuture = canKeepFutureAnswers
+      ? (session.navigationFuture ?? []).slice(1)
+      : [];
+
+    if (remainsInCurrentSection && navigationFuture.length) {
+      const nextItemId = advancedSession.queue[advancedSession.currentIndex];
+      if (
+        navigationFuture[0]?.response?.itemId !== nextItemId ||
+        navigationFuture[0]?.before?.phase !== advancedSession.phase
+      ) {
+        navigationFuture = [];
+      }
+    }
+
+    const nextSession = {
+      ...advancedSession,
+      navigationHistory: remainsInCurrentSection
+        ? [
+            ...(session.navigationHistory ?? []),
+            { before: sessionBeforeAnswer, response },
+          ]
+        : [],
+      navigationFuture: remainsInCurrentSection ? navigationFuture : [],
+    };
 
     resetAnswerDrafts();
+    const nextFutureEntry = nextSession.navigationFuture[0] ?? null;
+    if (
+      nextFutureEntry &&
+      nextFutureEntry.response?.itemId ===
+        nextSession.queue[nextSession.currentIndex]
+    ) {
+      hydrateAnswerDraft(nextFutureEntry.response);
+    }
     setSession(nextSession);
     onProgress?.({
-      status: nextSession.phase === "result" ? "complete" : "in_progress",
+      status:
+        nextSession.phase === "result"
+          ? "complete"
+          : "in_progress",
       answeredCount: nextSession.responses.length,
       response,
+      responses: nextSession.responses,
       phase: nextSession.phase,
+      revised: isRevisitedQuestion,
     });
-    if (nextSession.phase === "result" && nextSession.result && !completionReportedRef.current) {
+    if (
+      nextSession.phase === "result" &&
+      nextSession.result &&
+      !completionReportedRef.current
+    ) {
       completionReportedRef.current = true;
       onComplete?.(nextSession.result);
     }
-    showSavedMessage();
+    if (remainsInCurrentSection) showSavedMessage();
   }
 
   function addSequenceToken(token) {
@@ -1218,17 +1528,99 @@ export default function EnglishDiagnostic({
     setSequenceDraft((current) => [...current, token]);
   }
 
-  if (session.phase === "intro") {
+  if (session.phase === "self-report") {
+    const selfReportIndex = Math.max(
+      0,
+      SELF_REPORT_OPTIONS.findIndex((option) => option.value === selfReportDraft)
+    );
+    const selectedSelfReport = SELF_REPORT_OPTIONS[selfReportIndex];
     return (
-      <section className="math-diagnostic-screen english-placement-screen">
-        <div className="diagnostic-result-card placement-start-card">
+      <section className="math-diagnostic-screen english-placement-screen english-self-report-screen">
+        <div className="diagnostic-result-card placement-start-card english-self-report-card">
           <p className="diagnostic-eyebrow">{t.eyebrow}</p>
-          <h1>{t.introTitle}</h1>
-          <p>{t.introText}</p>
-          <p className="result-note">{t.introNote}</p>
-          <PlatformButton onClick={beginTest}>
-            {t.start}
-          </PlatformButton>
+          <h1>{selfReportText.title}</h1>
+          <p>{selfReportText.text}</p>
+          <div className="english-level-picker">
+            <div
+              className="english-level-art"
+              aria-hidden="true"
+              style={{ backgroundImage: `url("${placementLevelArt[selectedSelfReport.value]}")` }}
+            />
+            <div className="english-level-picker-copy" aria-live="polite">
+              <span>{locale === "ru" ? "Выбранное описание" : "Tanlangan tavsif"}</span>
+              <strong>{selfReportText.options[selectedSelfReport.value]}</strong>
+            </div>
+            <div
+              className="english-level-range-wrap"
+              style={{ "--level-progress": `${(selfReportIndex / (SELF_REPORT_OPTIONS.length - 1)) * 100}%` }}
+            >
+              <div className="english-level-range-labels" aria-hidden="true">
+                <span>{locale === "ru" ? "Начинаю" : "Boshlayman"}</span>
+                <span>{locale === "ru" ? "Свободно" : "Erkin"}</span>
+              </div>
+              <div className="english-level-track">
+                <input
+                  className="english-level-range"
+                  type="range"
+                  min="0"
+                  max={SELF_REPORT_OPTIONS.length - 1}
+                  step="1"
+                  value={selfReportIndex}
+                  onChange={(event) =>
+                    setSelfReportDraft(SELF_REPORT_OPTIONS[Number(event.target.value)].value)
+                  }
+                  aria-label={selfReportText.title}
+                  aria-valuetext={selfReportText.options[selectedSelfReport.value]}
+                />
+                <div className="english-level-stops" aria-hidden="true">
+                  {SELF_REPORT_OPTIONS.map((option, index) => (
+                    <span
+                      key={option.value}
+                      className={
+                        index === selfReportIndex
+                          ? "is-current"
+                          : index < selfReportIndex
+                            ? "is-passed"
+                            : ""
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="diagnostic-actions english-self-report-actions">
+            <PlatformButton
+              className="orange-button"
+              onClick={() => beginTest(selectedSelfReport.value)}
+            >
+              {selfReportText.continue}
+            </PlatformButton>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (session.phase === "incomplete" && session.incomplete) {
+    const incompleteProgress = t.incompleteProgress
+      .replace("{count}", String(session.incomplete.answeredCount))
+      .replace("{total}", String(session.incomplete.totalQuestions));
+
+    return (
+      <section className="math-diagnostic-screen english-placement-screen english-placement-result-screen">
+        <div className="diagnostic-result-card english-placement-incomplete-card">
+          <p className="diagnostic-eyebrow">{t.incompleteEyebrow}</p>
+          <h1>{t.incompleteTitle}</h1>
+          <p className="english-incomplete-text">{t.incompleteText}</p>
+          <strong className="english-incomplete-progress">{incompleteProgress}</strong>
+          <p className="english-incomplete-retry">{t.incompleteRetry}</p>
+          <div className="diagnostic-actions english-incomplete-actions">
+            <PlatformButton variant="secondary" onClick={onHome}>
+              {t.courses}
+            </PlatformButton>
+            <PlatformButton onClick={resetTest}>{t.retake}</PlatformButton>
+          </div>
         </div>
       </section>
     );
@@ -1236,6 +1628,7 @@ export default function EnglishDiagnostic({
 
   if (session.phase === "result" && session.result) {
     const result = session.result;
+    const resultTotal = result.totalQuestions ?? result.responses?.length ?? PLACEMENT_TOTAL;
     const strengths = Object.entries(result.skillStats).filter(
       ([, stat]) => stat.total > 0 && stat.accuracy >= 0.7
     );
@@ -1249,34 +1642,40 @@ export default function EnglishDiagnostic({
       result.flags.tooFastCount >= 4;
 
     return (
-      <section className="math-diagnostic-screen english-placement-screen">
-        <div className="diagnostic-result-card">
+      <section className="math-diagnostic-screen english-placement-screen english-placement-result-screen">
+        <div className="diagnostic-result-card english-placement-result-card">
           <p className="diagnostic-eyebrow">{t.resultEyebrow}</p>
           <h1>{t.resultTitle}</h1>
-          <div className="result-grade english-result-level">
-            <b>{LEVEL_LABEL[result.placementLevel]}</b>
-            <span>{localText(levelDefinitions[result.placementLevel].label, locale)}</span>
+          <div className="english-result-summary">
+            <div className="result-grade english-result-level">
+              <b>{RESULT_LEVEL_LABEL[result.placementLevel]}</b>
+              <span>{localText(levelDefinitions[result.placementLevel].label, locale)}</span>
+            </div>
+            <div className="english-result-details">
+              <strong>
+                {t.recommended}: {result.recommendedCourse}
+              </strong>
+              <p className="result-score">
+                {t.confidence}: {result.confidence === "high" ? t.high : t.medium}
+              </p>
+              {result.completionType === "SELF_REPORT_KIDS" ? (
+                <p className="result-score">{locale === "uz" ? "Test talab qilinmadi" : "Тест не требуется"}</p>
+              ) : (
+                <>
+                  <p className="result-score result-correct">
+                    {t.correctAnswers
+                      .replace("{score}", String(result.score))
+                      .replace("{total}", String(resultTotal))}
+                  </p>
+                  <p>
+                    {t.answered
+                      .replace("{count}", String(result.answeredCount))
+                      .replace("{total}", String(resultTotal))}
+                  </p>
+                </>
+              )}
+            </div>
           </div>
-          <strong>
-            {t.recommended}: {result.recommendedCourse}
-          </strong>
-          <p className="result-score">
-            {t.confidence}: {result.confidence === "high" ? t.high : t.medium}
-          </p>
-          <p className="result-score result-correct">
-            {t.correctAnswers
-              .replace("{score}", String(result.score))
-              .replace("{total}", String(PLACEMENT_TOTAL))}
-          </p>
-          <p>{t.answered.replace("{count}", result.answeredCount)}</p>
-
-          {result.borderlineWith && (
-            <p className="result-note placement-borderline">
-              {t.borderline
-                .replace("{level}", LEVEL_LABEL[result.borderlineWith])
-                .replace("{current}", LEVEL_LABEL[result.placementLevel])}
-            </p>
-          )}
 
           <div className="result-columns">
             <article>
@@ -1305,13 +1704,23 @@ export default function EnglishDiagnostic({
             </article>
           </div>
 
-          {result.placementLevel === "B2" && <p className="result-note">{t.b2Note}</p>}
-          {result.placementLevel === "preA1" && !Number.isFinite(studentAge) && (
-            <p className="result-note">{t.preA1NoAge}</p>
+          {(result.borderlineWith ||
+            result.placementLevel === "B2" ||
+            technicalFlag) && (
+            <div className="english-result-notes">
+              {result.borderlineWith && (
+                <p className="result-note placement-borderline">
+                  {t.borderline
+                    .replace("{level}", RESULT_LEVEL_LABEL[result.borderlineWith])
+                    .replace("{current}", RESULT_LEVEL_LABEL[result.placementLevel])}
+                </p>
+              )}
+              {result.placementLevel === "B2" && <p className="result-note">{t.b2Note}</p>}
+              {technicalFlag && <p className="result-note">{t.technicalFlag}</p>}
+            </div>
           )}
-          {technicalFlag && <p className="result-note">{t.technicalFlag}</p>}
 
-          <div className="diagnostic-actions">
+          <div className="diagnostic-actions english-result-actions">
             <PlatformButton variant="secondary" onClick={resetTest}>
               {t.retake}
             </PlatformButton>
@@ -1333,6 +1742,7 @@ export default function EnglishDiagnostic({
   return (
     <section className="math-diagnostic-screen english-placement-screen">
       <div className="diagnostic-shell">
+        <PlacementSectionProgress session={session} t={t} />
         <PlatformButton
           className="finish-test-button"
           onClick={() => setExitConfirmationOpen(true)}
@@ -1344,15 +1754,12 @@ export default function EnglishDiagnostic({
         <aside className="diagnostic-side">
           <p className="diagnostic-eyebrow">{t.eyebrow}</p>
           <h1>
-            {t.part} <b>{partNumber}</b> {t.ofParts}
+            {t.part} <b>{partNumber}</b> / {session.phase === "confirm" ? 2 : 1}
           </h1>
-          <strong>{t.parts[session.phase]}</strong>
+          <strong>{currentPartTitle}</strong>
           <p className="diagnostic-question-count">
-            {t.question} {questionNumber} {t.ofQuestions}
+            {t.question} {questionNumber} / {questionTotal}
           </p>
-          <div className="diagnostic-progress">
-            <span style={{ width: `${(questionNumber / PLACEMENT_TOTAL) * 100}%` }} />
-          </div>
           <p className="diagnostic-exit-note">{t.exitHint}</p>
         </aside>
 
@@ -1366,6 +1773,16 @@ export default function EnglishDiagnostic({
               <h2>{t.soundTitle}</h2>
               <p>{t.soundText}</p>
               <div className="diagnostic-actions">
+                <PlatformButton
+                  className="english-question-back"
+                  variant="secondary"
+                  onClick={goToPreviousQuestion}
+                  disabled={!canGoToPreviousQuestion}
+                  title={t.previousHint}
+                  aria-label={t.previousHint}
+                >
+                  ← {t.previous}
+                </PlatformButton>
                 <PlatformButton variant="secondary" onClick={runSoundCheck}>
                   🔊 {t.testSound}
                 </PlatformButton>
@@ -1494,6 +1911,16 @@ export default function EnglishDiagnostic({
               )}
 
               <div className="diagnostic-navigation english-diagnostic-navigation">
+                <PlatformButton
+                  className="english-question-back"
+                  variant="secondary"
+                  onClick={goToPreviousQuestion}
+                  disabled={!canGoToPreviousQuestion}
+                  title={t.previousHint}
+                  aria-label={t.previousHint}
+                >
+                  ← {t.previous}
+                </PlatformButton>
                 <PlatformButton variant="secondary" onClick={() => submitAnswer({ skipped: true })}>
                   {t.dontKnow}
                 </PlatformButton>

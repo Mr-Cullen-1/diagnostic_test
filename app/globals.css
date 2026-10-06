@@ -166,11 +166,919 @@ a { color: inherit; }
 .choice-task { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: clamp(16px, 2.3vw, 26px); }.choice-task button { min-height: 62px; padding: 10px 14px; border: 1px solid #f0e4de; border-radius: 16px; background: #fffdfc; color: #50423c; font-size: 16px; font-weight: 800; text-align: left; transition: border-color .16s ease, background .16s ease, color .16s ease, transform .16s ease; }.choice-task button:hover { border-color: #f78a5c; background: #fff5ef; color: #bf4211; transform: translateY(-1px); }.choice-task button.selected { border-color: #f57238; background: #fff0e9; color: #bd3e0c; box-shadow: 0 0 0 3px rgba(245, 114, 56, .1); }.written-task { margin-top: clamp(18px, 3vw, 32px); }.written-task label { display: grid; gap: 9px; color: #6e5d56; font-size: 13px; font-weight: 800; }.written-task input { width: 100%; min-height: 62px; padding: 0 17px; border: 1px solid #efcdbf; border-radius: 16px; outline: none; background: #fffaf7; color: #3a2d28; font-size: 22px; font-weight: 700; }.written-task input:focus { border-color: #f57238; box-shadow: 0 0 0 4px rgba(254, 91, 26, .12); }.written-task input::placeholder { color: #b7aaa4; }
 
 /* Shared reading rhythm: headings stay compact without touching or breaking words. */
-.diagnostic-card h2, .diagnostic-result-card h1 { letter-spacing: -.025em; line-height: 1.16; }.english-placement-screen .diagnostic-result-card { width: min(760px, 100%); }.english-placement-screen .diagnostic-result-card > p { line-height: 1.5; }.english-result-level { gap: 10px; margin: 24px 0 16px; }.english-result-level b { width: auto; min-width: 156px; height: auto; min-height: 82px; padding: 12px 20px; white-space: nowrap; word-break: normal; overflow-wrap: normal; border-radius: 26px; font-size: 46px; letter-spacing: -.025em; line-height: 1; }.english-result-level span { max-width: 260px; color: #7f6459; font-size: 14px; font-weight: 700; line-height: 1.45; }.english-placement-screen .placement-start-card h1 { max-width: 620px; margin-right: auto; margin-left: auto; }.result-correct { color: #3a2d28; font-size: 15px; font-weight: 800; }
+.diagnostic-card h2, .diagnostic-result-card h1 { letter-spacing: -.025em; line-height: 1.16; }.english-placement-screen .diagnostic-result-card { width: min(760px, 100%); }.english-placement-screen .diagnostic-result-card > p { line-height: 1.5; }.english-result-level { gap: 10px; margin: 24px 0 16px; }.english-result-level b { width: auto; min-width: 156px; height: auto; min-height: 82px; padding: 12px 20px; white-space: nowrap; word-break: normal; overflow-wrap: normal; border-radius: 26px; font-size: 46px; letter-spacing: -.025em; line-height: 1; }.english-result-level span { max-width: 260px; color: #7f6459; font-size: 14px; font-weight: 700; line-height: 1.45; }.english-placement-screen .placement-start-card h1 { max-width: 620px; margin-right: auto; margin-left: auto; }.result-correct { color: #3a2d28; font-size: 15px; font-weight: 800; }.english-placement-screen .english-self-report-card { width: min(860px, 100%); }.english-self-report-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 26px; }.english-self-report-option { min-height: 78px; padding: 16px 18px; border: 1px solid #f0ddd5; border-radius: 18px; background: #fffdfc; color: #342621; font: inherit; font-size: 16px; font-weight: 750; line-height: 1.35; text-align: left; cursor: pointer; transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }.english-self-report-option:hover, .english-self-report-option:focus-visible { border-color: var(--primary); box-shadow: 0 8px 20px rgba(255, 86, 29, .12); outline: none; transform: translateY(-1px); }
 
 @media (max-height: 800px) and (min-width: 701px) { .diagnostic-side h1 { font-size: 28px; }.diagnostic-side img { width: 126px; }.diagnostic-card h2 { font-size: 27px; }.number-answer { min-height: 54px; font-size: 25px; }.number-keypad button { min-height: 40px; }.match-pair { min-height: 45px; }.match-answers button { min-height: 40px; }.built-answer { min-height: 58px; }.token-pool button { min-height: 40px; }.diagnostic-result-card { padding: 24px; }.result-grade { margin: 14px 0 8px; }.result-grade b { width: 64px; height: 64px; font-size: 38px; }.result-columns { margin-top: 16px; }.result-columns article { min-height: 92px; padding: 12px; }.result-note { margin-top: 12px; }.diagnostic-actions { margin-top: 14px; } }
 
 @media (max-width: 700px) { .app-shell.screen-math-test, .app-shell.screen-english-test { height: 100dvh; overflow: hidden; }.math-diagnostic-screen { height: calc(100dvh - 68px); min-height: 0; padding: 10px 12px; overflow: hidden; }.diagnostic-shell { height: 100%; min-height: 0; padding: 16px; gap: 12px; overflow: hidden; }.diagnostic-side { grid-template-columns: 1fr auto; }.diagnostic-side p { display: none; }.diagnostic-side h1 { font-size: 22px; }.diagnostic-progress { height: 7px; margin-top: 8px; }.diagnostic-side img { width: 65px; padding: 5px; }.diagnostic-card h2 { font-size: clamp(20px, 5.5vw, 26px); }.number-task > p, .builder-task > p, .match-task > p { display: none; }.number-task, .builder-task, .match-task { margin-top: 12px; }.number-answer { min-height: 52px; font-size: 24px; }.number-keypad { gap: 6px; margin-top: 8px; }.number-keypad button { min-height: 38px; font-size: 16px; }.built-answer { min-height: 54px; }.token-pool { gap: 6px; margin-top: 8px; }.token-pool button { min-height: 38px; padding: 6px 11px; }.match-pairs { gap: 5px; }.match-pair { min-height: 42px; font-size: 14px; }.match-pair b { min-width: 36px; min-height: 30px; }.match-answers { gap: 6px; margin-top: 8px; }.diagnostic-message { margin: 7px 0 -2px; }.diagnostic-submit { min-height: 46px; margin-top: auto; }.diagnostic-navigation { padding-top: 8px; }.finish-test-button { top: 9px; right: 12px; min-height: 30px; padding: 0 10px; font-size: 10px; }.finish-dialog { padding: 24px 18px; }.finish-dialog h2 { font-size: 24px; }.finish-dialog > div { flex-direction: column-reverse; }.finish-dialog .text-button, .finish-dialog .orange-button { width: 100%; }.diagnostic-result-card { height: 100%; padding: 20px; overflow: hidden; }.diagnostic-result-card h1 { font-size: 31px; }.result-grade { margin: 12px 0 7px; }.result-grade b { width: 58px; height: 58px; border-radius: 19px; font-size: 36px; }.result-columns { gap: 7px; margin-top: 13px; }.result-columns article { min-height: 0; padding: 10px; }.result-columns p { font-size: 12px; }.result-note { margin-top: 10px; }.diagnostic-actions { margin-top: 12px; } }
+
+@media (max-width: 700px) { .english-placement-screen .english-self-report-card { height: auto; max-height: 100%; }.english-self-report-options { grid-template-columns: 1fr; gap: 8px; margin-top: 16px; }.english-self-report-option { min-height: 52px; padding: 11px 13px; font-size: 14px; } }
+
+/* English placement is a fixed, scroll-free test canvas. Compact the task itself
+   on short screens instead of putting the question inside a scrolling panel. */
+.screen-english-test .english-placement-screen {
+  padding-block: clamp(8px, 2dvh, 18px);
+}
+
+.screen-english-test .english-placement-screen .diagnostic-shell {
+  gap: clamp(18px, 4vw, 54px);
+  padding-top: clamp(38px, 6dvh, 48px);
+  padding-bottom: clamp(12px, 2.5dvh, 24px);
+}
+
+.screen-english-test .diagnostic-card {
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
+
+.english-section-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(7px, 1.5vw, 14px);
+  width: 100%;
+}
+
+.english-section-progress-count-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.english-section-progress-test {
+  position: absolute;
+  z-index: 1;
+  top: 19px;
+  right: clamp(154px, 18vw, 198px);
+  left: clamp(22px, 4vw, 48px);
+  width: auto;
+}
+
+.english-section-progress-item {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+}
+
+.english-section-progress-number {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  border-radius: 50%;
+  color: #aa9a93;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.english-section-progress-track {
+  display: block;
+  height: 7px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: #eee4df;
+}
+
+.english-section-progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #fe5b1a, #ff9a6f);
+  transition: width .3s ease;
+}
+
+.english-section-progress-item.is-active .english-section-progress-number,
+.english-section-progress-item.is-complete .english-section-progress-number {
+  background: #fff0e8;
+  color: var(--primary);
+}
+
+.english-section-progress-item.is-active .english-section-progress-track {
+  box-shadow: 0 0 0 2px rgba(254, 91, 26, .12);
+}
+
+.english-section-progress-item.is-complete .english-section-progress-track > span {
+  background: var(--primary);
+}
+
+.screen-english-test .diagnostic-card h2 {
+  margin-top: clamp(8px, 1.8dvh, 16px);
+}
+
+.screen-english-test .listening-task {
+  gap: clamp(5px, 1.2dvh, 8px);
+  margin-top: clamp(8px, 1.8dvh, 14px);
+}
+
+.screen-english-test .choice-task {
+  margin-top: clamp(10px, 2dvh, 16px);
+}
+
+.screen-english-test .diagnostic-navigation {
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding-top: clamp(8px, 1.5dvh, 12px);
+}
+
+.screen-english-test .english-diagnostic-navigation .english-question-back {
+  flex: 0 0 auto;
+  margin-right: auto;
+  white-space: nowrap;
+}
+
+.screen-english-test .english-diagnostic-navigation .diagnostic-submit {
+  width: auto;
+}
+
+@media (max-height: 620px) and (min-width: 701px) {
+  .screen-english-test .choice-task {
+    gap: 8px;
+  }
+
+  .screen-english-test .choice-task button {
+    min-height: 52px;
+    padding-block: 7px;
+  }
+
+  .screen-english-test .diagnostic-card h2 {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 700px) {
+  .screen-english-test > .junior-header,
+  .screen-english-test > .junior-header-spacer,
+  .screen-english-test > .faq-button {
+    display: none;
+  }
+
+  .screen-english-test .english-placement-screen {
+    height: 100dvh;
+    padding: 8px;
+  }
+
+  .screen-english-test .english-placement-screen .diagnostic-shell {
+    gap: 8px;
+    padding: 38px 12px 10px;
+  }
+
+  .english-section-progress {
+    gap: 5px;
+  }
+
+  .english-section-progress-test {
+    top: 14px;
+    right: 126px;
+    left: 12px;
+  }
+
+  .english-section-progress-item {
+    gap: 3px;
+  }
+
+  .english-section-progress-number {
+    width: 13px;
+    height: 13px;
+    font-size: 8px;
+  }
+
+  .english-section-progress-track {
+    height: 6px;
+  }
+
+  .screen-english-test .diagnostic-side h1 {
+    font-size: clamp(19px, 5.5vw, 22px);
+  }
+
+  .screen-english-test .diagnostic-side > strong {
+    font-size: 12px;
+  }
+
+  .screen-english-test .diagnostic-card h2 {
+    margin-top: 7px;
+    font-size: clamp(18px, 5vw, 23px);
+  }
+
+  .screen-english-test .choice-task {
+    gap: 7px;
+    margin-top: 9px;
+  }
+
+  .screen-english-test .choice-task button {
+    min-height: 50px;
+    padding: 7px 10px;
+    font-size: 14px;
+  }
+
+  .screen-english-test .listening-task {
+    gap: 4px;
+    margin-top: 8px;
+  }
+
+  .screen-english-test .listening-task p {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  .screen-english-test .diagnostic-navigation {
+    gap: 5px;
+    padding-top: 7px;
+  }
+
+  .screen-english-test .english-diagnostic-navigation .platform-button {
+    min-height: 42px;
+    padding-inline: clamp(8px, 2.7vw, 11px);
+    font-size: clamp(10px, 3vw, 12px);
+    white-space: nowrap;
+  }
+}
+
+/* The placement result uses a compact summary instead of a tall vertical stack,
+   keeping its course actions visible without introducing a result scrollbar. */
+.english-placement-result-screen {
+  display: grid;
+  place-items: center;
+}
+
+.screen-english-test .english-placement-result-card {
+  display: flex;
+  width: min(960px, 100%);
+  height: auto;
+  max-height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  padding: clamp(14px, 2.4dvh, 28px) clamp(16px, 3vw, 36px);
+  overflow: hidden;
+}
+
+.english-placement-result-card > .diagnostic-eyebrow {
+  margin-bottom: clamp(4px, 1dvh, 8px);
+}
+
+.english-placement-result-card > h1 {
+  margin: 0;
+  font-size: clamp(28px, min(3.6vw, 6dvh), 48px);
+  line-height: 1.06;
+}
+
+.english-result-summary {
+  display: grid;
+  width: min(700px, 100%);
+  grid-template-columns: minmax(180px, 210px) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(14px, 3vw, 32px);
+  margin: clamp(8px, 1.5dvh, 14px) auto 0;
+}
+
+.english-result-summary .english-result-level {
+  gap: 5px;
+  margin: 0;
+}
+
+.english-result-summary .english-result-level b {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 60px;
+  padding: 8px 16px;
+  border-radius: 22px;
+  font-size: clamp(28px, min(2.6vw, 5.5dvh), 32px);
+  letter-spacing: -.04em;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.english-result-summary .english-result-level span {
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.english-result-details {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  text-align: left;
+}
+
+.english-result-details > strong {
+  color: #2d2623;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.english-result-details > p,
+.english-result-details > .result-score {
+  margin: 0;
+  color: #806e66;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.english-result-details > .result-correct {
+  color: #3a2d28;
+  font-size: 14px;
+}
+
+.english-placement-result-card .result-columns {
+  width: 100%;
+  gap: 10px;
+  margin-top: clamp(8px, 1.5dvh, 14px);
+}
+
+.english-placement-result-card .result-columns article {
+  min-height: 0;
+  padding: 10px 12px;
+  border-radius: 15px;
+}
+
+.english-placement-result-card .result-columns h2 {
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+
+.english-placement-result-card .result-columns p {
+  margin: 3px 0;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.english-result-notes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  margin-top: 7px;
+}
+
+.english-result-notes .result-note {
+  max-width: none;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #fff8f4;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.english-placement-result-card .english-result-actions {
+  margin-top: clamp(8px, 1.5dvh, 14px);
+}
+
+.english-placement-result-card .english-result-actions .text-button,
+.english-placement-result-card .english-result-actions .orange-button {
+  min-height: 42px;
+  padding-inline: 15px;
+  font-size: 12px;
+}
+
+@media (max-height: 560px) and (min-width: 701px) {
+  .screen-english-test > .junior-header,
+  .screen-english-test > .junior-header-spacer,
+  .screen-english-test > .faq-button {
+    display: none;
+  }
+
+  .screen-english-test .english-placement-screen {
+    height: 100dvh;
+  }
+}
+
+@media (max-width: 700px) {
+  .screen-english-test .english-placement-result-card {
+    width: 100%;
+    padding: 12px;
+  }
+
+  .english-placement-result-card > h1 {
+    font-size: clamp(26px, 8vw, 34px);
+    line-height: 1.06;
+  }
+
+  .english-result-summary {
+    grid-template-columns: minmax(128px, 0.7fr) minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .english-result-summary .english-result-level b {
+    width: 100%;
+    min-width: 0;
+    min-height: 52px;
+    padding: 7px 8px;
+    border-radius: 18px;
+    font-size: clamp(19px, 5.5vw, 30px);
+    letter-spacing: -.045em;
+  }
+
+  .english-result-summary .english-result-level span,
+  .english-result-details > p,
+  .english-result-details > .result-score {
+    font-size: 11px;
+  }
+
+  .english-result-details > strong,
+  .english-result-details > .result-correct {
+    font-size: 12px;
+  }
+
+  .english-placement-result-card .result-columns {
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .english-placement-result-card .result-columns article {
+    padding: 7px 9px;
+  }
+
+  .english-placement-result-card .result-columns h2,
+  .english-placement-result-card .result-columns p {
+    font-size: 11px;
+  }
+
+  .english-result-notes {
+    grid-template-columns: 1fr;
+    gap: 4px;
+    margin-top: 5px;
+  }
+
+  .english-result-notes .result-note {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+
+  .english-placement-result-card .english-result-actions {
+    flex-direction: row;
+    gap: 7px;
+    margin-top: 8px;
+  }
+
+  .english-placement-result-card .english-result-actions .text-button,
+  .english-placement-result-card .english-result-actions .orange-button {
+    width: auto;
+    min-width: 0;
+    min-height: 40px;
+    flex: 1;
+    padding-inline: 8px;
+    font-size: 11px;
+  }
+}
+
+/* Early manual completion has no placement result or course recommendation. */
+.screen-english-test .english-placement-incomplete-card {
+  display: flex;
+  width: min(700px, 100%);
+  height: auto;
+  max-height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(24px, 5dvh, 48px) clamp(20px, 5vw, 48px);
+  overflow: hidden;
+}
+
+.english-placement-incomplete-card > .diagnostic-eyebrow {
+  margin-bottom: 8px;
+}
+
+.english-placement-incomplete-card > h1 {
+  max-width: 560px;
+  margin: 0;
+  font-size: clamp(32px, min(5vw, 7dvh), 52px);
+  line-height: 1.06;
+}
+
+.english-incomplete-text,
+.english-incomplete-retry {
+  max-width: 560px;
+  margin: clamp(12px, 2.2dvh, 18px) auto 0;
+  color: #6f615b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.english-incomplete-progress {
+  margin-top: clamp(14px, 2.5dvh, 22px);
+  padding: 9px 14px;
+  border-radius: 13px;
+  background: #fff0e8;
+  color: #ba4619;
+  font-size: 14px;
+}
+
+.english-placement-incomplete-card .english-incomplete-actions {
+  margin-top: clamp(18px, 3dvh, 28px);
+}
+
+@media (max-width: 700px) {
+  .screen-english-test .english-placement-incomplete-card {
+    width: 100%;
+    padding: 20px 16px;
+  }
+
+  .english-placement-incomplete-card > h1 {
+    font-size: clamp(29px, 8vw, 38px);
+  }
+
+  .english-incomplete-text,
+  .english-incomplete-retry {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .english-incomplete-progress {
+    margin-top: 12px;
+    font-size: 12px;
+  }
+
+  .english-placement-incomplete-card .english-incomplete-actions {
+    width: 100%;
+    margin-top: 14px;
+  }
+
+  .english-placement-incomplete-card .english-incomplete-actions .platform-button {
+    width: 100%;
+  }
+}
+
+/* English placement: a single, movable six-stop confidence scale. */
+.english-self-report-card {
+  text-align: center;
+}
+
+.english-level-picker {
+  margin-top: clamp(18px, 2.6vw, 28px);
+  padding: clamp(12px, 1.7vw, 18px);
+  border: 1px solid #f2ddd3;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #fffaf7 0%, #fff 100%);
+}
+
+/* The confidence selector is a real set of choices, not a disguised range input.
+   Every step exposes its description, and the selected state is unmistakable. */
+.english-confidence-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.english-confidence-option {
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr);
+  gap: 7px;
+  min-height: 54px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid #eddcd3;
+  border-radius: 14px;
+  background: #fff;
+  color: #4a3730;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.english-confidence-option:hover,
+.english-confidence-option:focus-visible {
+  border-color: #f58a60;
+  background: #fff7f3;
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.english-confidence-option.is-selected {
+  border-color: #ff5b20;
+  background: #fff0e9;
+  box-shadow: 0 0 0 3px rgba(255, 91, 32, .12);
+}
+
+.english-confidence-option > span {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f7e8e0;
+  color: #b65b35;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.english-confidence-option.is-selected > span {
+  background: #ff5b20;
+  color: #fff;
+}
+
+.english-confidence-option > b {
+  display: -webkit-box;
+  overflow: hidden;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.22;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.english-level-art {
+  display: grid;
+  place-items: center;
+  height: clamp(160px, 22vw, 248px);
+  overflow: hidden;
+  border-radius: 18px;
+  background-color: #fff8f2;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  animation: english-level-art-in .26s ease-out;
+}
+
+.english-level-picker-copy {
+  display: grid;
+  gap: 5px;
+  min-height: 72px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #f4e5de;
+}
+
+.english-level-picker-copy span {
+  color: #ad5a38;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.english-level-picker-copy strong {
+  color: #35241e;
+  font-size: clamp(15px, 1.7vw, 19px);
+  line-height: 1.25;
+}
+
+.english-level-range-wrap {
+  position: relative;
+  margin: 18px 0 0;
+  padding: 0 12px 28px;
+}
+
+.english-level-range-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: #806d65;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.english-level-track {
+  position: relative;
+  height: 28px;
+}
+
+.english-level-range {
+  position: absolute;
+  top: 9px;
+  left: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 9px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 999px;
+  outline: none;
+  background: linear-gradient(90deg, #ff5c20 0 var(--level-progress), #ece6dd var(--level-progress) 100%);
+  cursor: grab;
+}
+
+.english-level-range:active {
+  cursor: grabbing;
+}
+
+.english-level-range::-webkit-slider-thumb {
+  width: 28px;
+  height: 28px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+}
+
+.english-level-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+}
+
+.english-level-range:focus-visible {
+  box-shadow: 0 0 0 5px rgba(255, 92, 32, .18);
+}
+
+.english-level-stops {
+  position: absolute;
+  z-index: 2;
+  top: 9px;
+  right: 0;
+  left: 0;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.english-level-stops span {
+  width: 12px;
+  height: 12px;
+  margin-top: -2px;
+  border: 2px solid #efb8a0;
+  border-radius: 50%;
+  background: #fffaf7;
+  box-shadow: 0 0 0 2px #fffaf7;
+}
+
+.english-level-stops span:first-child { transform: translateX(-50%); }
+.english-level-stops span:last-child { transform: translateX(50%); }
+
+.english-level-stops span.is-passed {
+  border-color: #ff5c20;
+  background: #ff5c20;
+}
+
+.english-level-stops span.is-current {
+  width: 18px;
+  height: 18px;
+  margin-top: -5px;
+  border-color: #ff5c20;
+  background: #ff5c20;
+  box-shadow: 0 0 0 2px #fffaf7;
+}
+
+.english-level-picker-hint {
+  margin: 0;
+  color: #806d65;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.english-self-report-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.english-self-report-actions .platform-button {
+  min-width: min(340px, 100%);
+}
+
+@media (min-width: 701px) {
+  .screen-english-test .english-self-report-screen {
+    overflow: hidden;
+  }
+
+  .english-level-picker {
+    display: grid;
+    grid-template-columns: minmax(240px, .9fr) minmax(320px, 1.1fr);
+    column-gap: clamp(14px, 2.5vw, 26px);
+    align-items: center;
+    text-align: left;
+  }
+
+  .english-level-art {
+    grid-row: 1 / span 3;
+    height: clamp(166px, 18vw, 215px);
+  }
+
+  .english-level-picker-copy {
+    margin-top: 0;
+  }
+
+  .english-confidence-options {
+    grid-column: 2;
+    margin-top: 12px;
+  }
+
+  .english-level-range-wrap {
+    margin: 12px 12px 0;
+  }
+
+  .english-level-picker-hint {
+    align-self: start;
+    margin-top: 4px;
+  }
+}
+
+@media (max-height: 800px) and (min-width: 701px) {
+  .english-self-report-card {
+    padding: 20px 24px;
+  }
+
+  .english-placement-screen .placement-start-card > p:not(.result-note) {
+    margin-top: 10px;
+  }
+
+  .english-placement-screen .placement-start-card h1 {
+    font-size: 42px;
+  }
+
+  .english-level-picker {
+    margin-top: 14px;
+    padding: 10px;
+  }
+
+  .english-level-art {
+    height: 164px;
+  }
+
+  .english-level-picker-copy {
+    min-height: 52px;
+    padding: 8px 12px;
+  }
+
+  .english-confidence-option {
+    min-height: 48px;
+    padding: 7px 8px;
+  }
+
+  .english-confidence-option > b {
+    font-size: 10px;
+  }
+
+  .english-level-range-wrap {
+    margin-top: 8px;
+    padding-top: 14px;
+    padding-bottom: 28px;
+  }
+
+  .english-self-report-actions {
+    margin-top: 12px;
+  }
+}
+
+@keyframes english-level-art-in {
+  from { opacity: .35; transform: scale(.975); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 700px) {
+  .english-level-picker {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 20px;
+  }
+
+  .english-level-art {
+    height: min(35vh, 210px);
+  }
+
+  .english-level-picker-copy {
+    min-height: 62px;
+    margin-top: 9px;
+  }
+
+  .english-confidence-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .english-confidence-option {
+    min-height: 48px;
+    padding: 7px;
+  }
+
+  .english-confidence-option > b {
+    font-size: 10px;
+  }
+
+  .english-level-range-wrap {
+    margin-top: 12px;
+    padding-bottom: 28px;
+  }
+
+  .english-level-picker-hint {
+    font-size: 12px;
+  }
+
+  .english-self-report-actions {
+    width: 100%;
+    margin-top: 12px;
+  }
+
+  .english-self-report-actions .platform-button {
+    width: 100%;
+  }
+}
 .screen-math-test > .junior-header,
 .screen-math-test > .junior-header-spacer,
 .screen-math-test > .faq-button {
