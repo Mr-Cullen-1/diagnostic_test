@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import MathDiagnostic from "./math-diagnostic";
-import { mathTestItems58 } from "./math-test-items-5-8";
-import { mathTestItems911 } from "./math-test-items-9-11";
-import { mathTestItems } from "./math-test-items";
+import MathPlacement from "./math-placement";
 import EnglishDiagnostic from "./english-diagnostic(1)";
 import PlatformButton from "./platform-button";
 
@@ -287,8 +284,6 @@ export default function Home() {
     if (selectedCourse === "english") setScreen("english-test");
   }
 
-  const mathTestBank = Number(profile.grade) <= 4 ? mathTestItems : Number(profile.grade) <= 8 ? mathTestItems58 : mathTestItems911;
-
   return <main className={`app-shell screen-${screen}`} lang={locale}>
     <Header locale={locale} setLocale={setLocale} />
     {screen === "profile" && <section className="profile-screen">
@@ -319,7 +314,7 @@ export default function Home() {
       </aside>
     </section>}
     {screen === "subjects" && <section className="subject-screen"><button className="back-link profile-return" type="button" onClick={() => setScreen("profile")}>← {profileCopy.backToProfile}</button><div className="subject-intro"><p>{t.level}</p><h1>{t.learn}<br />{t.youKnow} <i>{t.can}</i></h1><span>{t.choose}</span></div><div className="subject-cards"><article className="subject-card math-card"><div className="card-content"><h2>{t.math}</h2><p>{split(t.mathDesc)}</p></div><span className="robot-bubble">2 + 2 = 4</span><button className="start-test" type="button" onClick={() => selectCourse("math")}>{t.start} <em>→</em></button><img className="card-robot" src="/junior-robot.png" alt="Робот Junior" /></article><article className="subject-card english-card"><div className="card-content"><h2>{split(t.english)}</h2><p>{split(t.englishDesc)}</p></div><span className="robot-bubble">Hello!</span><button className="start-test" type="button" onClick={() => selectCourse("english")}>{t.start} <em>→</em></button><img className="card-robot" src="/junior-robot.png" alt="Робот Junior" /></article></div></section>}
-    {screen === "math-test" && <MathDiagnostic locale={locale} itemBank={mathTestBank} onBack={() => setScreen("subjects")} onHome={() => setScreen("profile")} />}
+    {screen === "math-test" && <MathPlacement studentName={profile.name.trim()} lang={locale} onHome={() => setScreen("subjects")} onFinished={() => setScreen("subjects")} />}
     {screen === "english-test" && <EnglishDiagnostic locale={locale} studentAge={Number(profile.age)} onHome={() => setScreen("subjects")} />}
     {readyOpen && <div className="ready-overlay" role="dialog" aria-modal="true" aria-labelledby="ready-title"><section className="ready-dialog"><p>{readyCopy.eyebrow}</p><h2 id="ready-title">{readyCopy.title}</h2><span>{readyCopy.description}</span>{selectedCourse && <strong className="selected-course">{selectedCourse === "math" ? t.math : t.english.replace("\n", " ")}</strong>}<div className="ready-actions"><PlatformButton variant="secondary" onClick={() => setReadyOpen(false)}>{readyCopy.edit}</PlatformButton><PlatformButton className="pending-start" onClick={startDiagnostic}>{readyCopy.start}</PlatformButton></div></section></div>}
     {faqOpen && <div className="faq-overlay" role="dialog" aria-modal="true" aria-labelledby="faq-title" onClick={() => setFaqOpen(false)}><section className="faq-dialog" onClick={(event) => event.stopPropagation()}><button className="faq-close" type="button" aria-label={t.close} onClick={() => setFaqOpen(false)}>×</button><img src="/junior-robot.png" alt="" /><p>{t.faqHelp}</p><h2 id="faq-title">{t.faq}</h2><div className="faq-list"><article><b>{t.faq1}</b><span>{t.faq1a}</span></article><article><b>{t.faq2}</b><span>{t.faq2a}</span></article><article><b>{t.faq3}</b><span>{t.faq3a}</span></article></div></section></div>}
