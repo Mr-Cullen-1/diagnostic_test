@@ -10,14 +10,20 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     metadataBase,
-    title: "Математика по ступенькам — диагностика 1–11 классов",
-    description: "Диагностика по математике для 1–11 классов, которая помогает выбрать подходящий уровень.",
+    title: "Diagnostics",
+    description: "Junior IT Academy diagnostic tests for Mathematics and English.",
     openGraph: {
-      title: "Математика по ступенькам",
-      description: "Диагностика знаний по математике для 1–11 классов.",
-      images: [{ url: "/og.png", width: 1600, height: 900, alt: "Математика по ступенькам" }],
+      title: "Diagnostics | Junior IT Academy",
+      description: "Find the right starting point in Mathematics and English with Junior IT Academy.",
+      siteName: "Junior IT Academy",
+      images: [{ url: "/posters/poster-01.png", width: 1672, height: 941, alt: "Junior IT Academy diagnostics" }],
     },
-    twitter: { card: "summary_large_image", title: "Математика по ступенькам", images: ["/og.png"] },
+    twitter: {
+      card: "summary_large_image",
+      title: "Diagnostics | Junior IT Academy",
+      description: "Find the right starting point in Mathematics and English with Junior IT Academy.",
+      images: ["/posters/poster-01.png"],
+    },
   };
 }
 

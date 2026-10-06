@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import MathPlacement from "./math-placement";
 import EnglishDiagnostic from "./english-diagnostic(1)";
 import PlatformButton from "./platform-button";
@@ -115,7 +116,7 @@ function Header({ locale, setLocale }: { locale: Locale; setLocale: (locale: Loc
     <header className="junior-header">
       <div className="junior-nav-inner">
         <button className="mobile-menu-button" type="button" aria-label="Menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><span /><span /><span /></button>
-        <span className="logo-button" aria-label="Junior"><img src="/junior-logo.png" alt="Junior" /></span>
+        <span className="logo-button" aria-label="Junior"><Image src="/junior-logo.png" alt="Junior" width={160} height={41} /></span>
         <nav className="desktop-nav" aria-label="Main navigation">
           <button type="button">Kurslar</button>
           <button type="button">CoinShop</button>
@@ -197,12 +198,12 @@ export default function Home() {
     setDropdownMaxHeight(Math.max(0, Math.min(320, available)));
   }
 
-  function closeDropdown() {
+  const closeDropdown = useCallback(() => {
     if (!activeDropdown) return;
     setClosingDropdown(activeDropdown);
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     closeTimerRef.current = setTimeout(() => { setActiveDropdown(null); setClosingDropdown(null); }, 180);
-  }
+  }, [activeDropdown]);
 
   function toggleDropdown() {
     if (activeDropdown === "interests") return closeDropdown();
@@ -267,7 +268,7 @@ export default function Home() {
       document.removeEventListener("keydown", closeEscape);
       window.removeEventListener("resize", reposition);
     };
-  }, [activeDropdown, gradeDropdownOpen]);
+  }, [activeDropdown, gradeDropdownOpen, closeDropdown]);
 
   useEffect(() => () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current); }, []);
 
@@ -293,7 +294,7 @@ export default function Home() {
     {screen === "profile" && <section className="profile-screen">
       <form className="profile-form" onSubmit={submitProfile}>
         <div className="profile-form-top"><p>{profileCopy.eyebrow}</p></div>
-        <div className="profile-heading"><div><h1>{profileCopy.title}</h1><span>{profileCopy.description}</span></div><img className="profile-form-robot" src="/robot-form.png" alt="" /></div>
+        <div className="profile-heading"><div><h1>{profileCopy.title}</h1><span>{profileCopy.description}</span></div><Image className="profile-form-robot" src="/robot-form.png" alt="" width={512} height={512} /></div>
         <div className="profile-fields">
           <label className="wide"><span>{profileCopy.name}</span><input required value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} placeholder={profileCopy.namePlaceholder} /></label>
           <label><span>{profileCopy.age}</span><input required inputMode="numeric" value={profile.age} onChange={(event) => setProfile({ ...profile, age: event.target.value })} placeholder={profileCopy.agePlaceholder} /></label>
@@ -312,16 +313,16 @@ export default function Home() {
       <aside className="poster-carousel" aria-label="Junior IT Academy courses">
         <div className="poster-viewport">
           <div className="poster-track">
-            {[...posterSlides, ...posterSlides].map((poster, index) => <img key={`${poster.src}-${index}`} src={poster.src} alt={index < posterSlides.length ? poster.alt : ""} />)}
+            {[...posterSlides, ...posterSlides].map((poster, index) => <Image key={`${poster.src}-${index}`} src={poster.src} alt={index < posterSlides.length ? poster.alt : ""} width={1672} height={941} sizes="(max-width: 860px) 100vw, (max-width: 1200px) 30vw, 400px" />)}
           </div>
         </div>
       </aside>
     </section>}
-    {screen === "subjects" && <section className="subject-screen"><button className="back-link profile-return" type="button" onClick={() => setScreen("profile")}>← {profileCopy.backToProfile}</button><div className="subject-intro"><p>{t.level}</p><h1>{t.learn}<br />{t.youKnow} <i>{t.can}</i></h1><span>{t.choose}</span></div><div className="subject-cards"><article className="subject-card math-card"><div className="card-content"><h2>{t.math}</h2><p>{split(t.mathDesc)}</p></div><span className="robot-bubble">2 + 2 = 4</span><button className="start-test" type="button" onClick={() => selectCourse("math")}>{t.start} <em>→</em></button><img className="card-robot" src="/junior-robot.png" alt="Робот Junior" /></article><article className="subject-card english-card"><div className="card-content"><h2>{split(t.english)}</h2><p>{split(t.englishDesc)}</p></div><span className="robot-bubble">Hello!</span><button className="start-test" type="button" onClick={() => selectCourse("english")}>{t.start} <em>→</em></button><img className="card-robot" src="/junior-robot.png" alt="Робот Junior" /></article></div></section>}
+    {screen === "subjects" && <section className="subject-screen"><button className="back-link profile-return" type="button" onClick={() => setScreen("profile")}>← {profileCopy.backToProfile}</button><div className="subject-intro"><p>{t.level}</p><h1>{t.learn}<br />{t.youKnow} <i>{t.can}</i></h1><span>{t.choose}</span></div><div className="subject-cards"><article className="subject-card math-card"><div className="card-content"><h2>{t.math}</h2><p>{split(t.mathDesc)}</p></div><span className="robot-bubble">2 + 2 = 4</span><button className="start-test" type="button" onClick={() => selectCourse("math")}>{t.start} <em>→</em></button><Image className="card-robot" src="/junior-robot.png" alt="Робот Junior" width={593} height={441} /></article><article className="subject-card english-card"><div className="card-content"><h2>{split(t.english)}</h2><p>{split(t.englishDesc)}</p></div><span className="robot-bubble">Hello!</span><button className="start-test" type="button" onClick={() => selectCourse("english")}>{t.start} <em>→</em></button><Image className="card-robot" src="/junior-robot.png" alt="Робот Junior" width={593} height={441} /></article></div></section>}
     {screen === "math-test" && <MathPlacement studentName={profile.name.trim()} lang={locale} onHome={() => setScreen("subjects")} onFinished={() => setScreen("subjects")} />}
     {screen === "english-test" && <EnglishDiagnostic key={englishAttemptId} storageKey={`english-placement-v7-${englishAttemptId}`} locale={locale} studentAge={Number(profile.age)} onHome={() => setScreen("subjects")} />}
     {readyOpen && <div className="ready-overlay" role="dialog" aria-modal="true" aria-labelledby="ready-title"><section className="ready-dialog"><p>{readyCopy.eyebrow}</p><h2 id="ready-title">{readyCopy.title}</h2><span>{readyCopy.description}</span>{selectedCourse && <strong className="selected-course">{selectedCourse === "math" ? t.math : t.english.replace("\n", " ")}</strong>}<div className="ready-actions"><PlatformButton variant="secondary" onClick={() => setReadyOpen(false)}>{readyCopy.edit}</PlatformButton><PlatformButton className="pending-start" onClick={startDiagnostic}>{readyCopy.start}</PlatformButton></div></section></div>}
-    {faqOpen && <div className="faq-overlay" role="dialog" aria-modal="true" aria-labelledby="faq-title" onClick={() => setFaqOpen(false)}><section className="faq-dialog" onClick={(event) => event.stopPropagation()}><button className="faq-close" type="button" aria-label={t.close} onClick={() => setFaqOpen(false)}>×</button><img src="/junior-robot.png" alt="" /><p>{t.faqHelp}</p><h2 id="faq-title">{t.faq}</h2><div className="faq-list"><article><b>{t.faq1}</b><span>{t.faq1a}</span></article><article><b>{t.faq2}</b><span>{t.faq2a}</span></article><article><b>{t.faq3}</b><span>{t.faq3a}</span></article></div></section></div>}
-    <button className="faq-button" type="button" aria-label={t.faq} onClick={() => setFaqOpen(true)}><img src="/faq-robot.png" alt="" /></button>
+    {faqOpen && <div className="faq-overlay" role="dialog" aria-modal="true" aria-labelledby="faq-title" onClick={() => setFaqOpen(false)}><section className="faq-dialog" onClick={(event) => event.stopPropagation()}><button className="faq-close" type="button" aria-label={t.close} onClick={() => setFaqOpen(false)}>×</button><Image src="/junior-robot.png" alt="" width={593} height={441} /><p>{t.faqHelp}</p><h2 id="faq-title">{t.faq}</h2><div className="faq-list"><article><b>{t.faq1}</b><span>{t.faq1a}</span></article><article><b>{t.faq2}</b><span>{t.faq2a}</span></article><article><b>{t.faq3}</b><span>{t.faq3a}</span></article></div></section></div>}
+    <button className="faq-button" type="button" aria-label={t.faq} onClick={() => setFaqOpen(true)}><Image src="/faq-robot.png" alt="" width={440} height={440} /></button>
   </main>;
 }
