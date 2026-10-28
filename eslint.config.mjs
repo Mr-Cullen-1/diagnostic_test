@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generatsiya qilingan LMS fayli (rasmlar data-URI bilan): manba app/math-placement.jsx da tekshiriladi.
+    "lms/**",
+    "dist/**",
   ]),
 ]);
 
