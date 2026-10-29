@@ -821,7 +821,8 @@ const CSS = `
 .mp-qside{display:grid;place-items:center;min-height:0;min-width:0}
 .mp-qside img,.mp-qside .mp-mascot{box-sizing:border-box;padding:6px;height:min(100%,clamp(150px,38vh,290px));width:auto;max-width:100%;object-fit:contain;filter:drop-shadow(0 12px 16px rgba(63,39,27,.18));animation:mp-pop .5s both}
 .mp-qbar{position:relative;grid-column:1/-1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 12px;min-height:clamp(58px,9vh,76px);margin-top:clamp(8px,1.6vh,18px);padding-top:clamp(10px,1.8vh,16px);border-top:1px solid #f1e7e2}
-.mp-qbar > .mp-btn{flex:0 0 auto;max-width:100%;margin-left:auto}
+.mp-qbar > .mp-btn{flex:0 0 auto;max-width:100%}
+.mp-qbar > .mp-btn:not(.mp-btn--soft){margin-left:auto}
 .mp-barhint{color:var(--muted);font-size:14px;font-weight:700}
 .mp-fbtext{flex:1 1 160px;display:flex;align-items:center;gap:12px;min-width:0;font-size:clamp(13px,1.9vh,17px);line-height:1.3;animation:mp-rise .3s both}
 .mp-fbtext i{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;color:#fff;font-style:normal;font-size:16px;font-weight:900}

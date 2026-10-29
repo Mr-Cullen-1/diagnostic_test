@@ -143,8 +143,8 @@ try {
   const seenGrades = new Set();
   for (let i = 0; i < total; i += 1) {
     sawKatex ||= await evaluate(`!!document.querySelector('.mp-q .katex')`);
-    const bar = await evaluate(`(() => { const all = [...document.querySelectorAll('.mp-qbar .mp-btn')]; const soft = all.find((b) => b.classList.contains('mp-btn--soft')); const main = all.find((b) => !b.classList.contains('mp-btn--soft')); if (!soft || !main) return null; const s = soft.getBoundingClientRect(); const m = main.getBoundingClientRect(); const card = document.querySelector('.mp-qcard').getBoundingClientRect(); return { sameLine: Math.abs(s.top - m.top) < 6, softLeftOfMain: s.right <= m.left, mainAtRight: m.right > card.right - 40, atBottom: m.bottom > card.bottom - 40 }; })()`);
-    if (bar && !barChecked) { barChecked = true; check('Telefon: “Bilmayman” chapda, “Tekshirish” o‘ngda, pastda, bir qatorda', bar.sameLine && bar.softLeftOfMain && bar.mainAtRight && bar.atBottom, JSON.stringify(bar)); await shot('A2b-bar-mobile'); }
+    const bar = await evaluate(`(() => { const all = [...document.querySelectorAll('.mp-qbar .mp-btn')]; const soft = all.find((b) => b.classList.contains('mp-btn--soft')); const main = all.find((b) => !b.classList.contains('mp-btn--soft')); if (!soft || !main) return null; const s = soft.getBoundingClientRect(); const m = main.getBoundingClientRect(); const card = document.querySelector('.mp-qcard').getBoundingClientRect(); return { softAtLeft: s.left <= card.left + 60, sameLine: Math.abs(s.top - m.top) < 6, softLeftOfMain: s.right <= m.left, mainAtRight: m.right > card.right - 40, atBottom: m.bottom > card.bottom - 40 }; })()`);
+    if (bar && !barChecked) { barChecked = true; check('Telefon: “Bilmayman” chapda, “Tekshirish” o‘ngda, pastda, bir qatorda', bar.softAtLeft && bar.sameLine && bar.softLeftOfMain && bar.mainAtRight && bar.atBottom, JSON.stringify(bar)); await shot('A2b-bar-mobile'); }
     const { item, reactionOk } = await answerQuestion('ru', modes[i]);
     seenGrades.add(item.grade);
     allReactions &&= reactionOk;
@@ -234,6 +234,7 @@ try {
   await startTest();
   await shot('D2-question-desktop');
   check('11-sinf: 10 ta savol', Number((await textOf('.mp-counter')).split('/')[1]) === 10);
+  check('Desktop: “Bilmayman” karta chap chetida (markazda emas)', await evaluate(`(() => { const s = document.querySelector('.mp-qbar .mp-btn--soft').getBoundingClientRect(); const c = document.querySelector('.mp-qcard').getBoundingClientRect(); return s.left <= c.left + 80; })()`));
   const seen11 = new Set();
   for (let i = 0; i < 10; i += 1) {
     const { item } = await answerQuestion('en', 'right');
