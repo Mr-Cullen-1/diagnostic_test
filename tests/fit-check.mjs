@@ -55,6 +55,7 @@ for (const [w, h, mobile, tag] of sizes) {
   await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile });
   for (const lang of ['uz', 'ru']) {
     // Intro: sinf berilmaydi / beriladi
+    await ev(`try { localStorage.clear(); } catch (e) {}`);
     await send('Page.navigate', { url: `${BASE}/?lang=${lang}&embed=1` });
     await waitFor(`!!document.querySelector('.mp-root')`, 'intro'); await sleep(700);
     await measure(`${tag}/${lang} intro (sinf tanlash)`);
@@ -62,6 +63,7 @@ for (const [w, h, mobile, tag] of sizes) {
     await click('.mp-tile', '7'); await sleep(600);
     await measure(`${tag}/${lang} intro (sinf tanlangan)`);
     if (lang === 'uz') await shot(`${tag}-intro-picked`);
+    await ev(`try { localStorage.clear(); } catch (e) {}`);
     await send('Page.navigate', { url: `${BASE}/?lang=${lang}&grade=9&embed=1` });
     await waitFor(`!!document.querySelector('.mp-root')`, 'intro2'); await sleep(700);
     await measure(`${tag}/${lang} intro (sinf berilgan)`);

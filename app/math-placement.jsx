@@ -29,8 +29,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 // <logic>
-const ENGINE_VERSION = "math-placement-v3";
-const SESSION_VERSION = 2;
+const ENGINE_VERSION = "math-placement-v4";
+const SESSION_VERSION = 3;
+// O‘z sinfi ochilishi uchun kerak bo‘lgan to‘g‘ri javoblar ulushi (≥ 90%). 10 ta savolda 1 ta xato mumkin;
+// 6–8 ta savolda esa hammasi to‘g‘ri bo‘lishi kerak.
+const OWN_GRADE_THRESHOLD = 0.9;
+const SECONDS_PER_QUESTION = 25;
 const LANGS = ["uz", "ru", "en"];
 const DOMAIN_IDS = ["number", "operations", "fractions", "problems", "measurement", "geometry", "algebra", "functions", "probability"];
 const TOO_FAST_MS = 700;
@@ -49,6 +53,8 @@ const MATH_ITEMS = [
   N("g1-tens", 1, "number", L("3 ta o‘nlik va 4 ta birlikdan iborat son qaysi?", "Какое число состоит из 3 десятков и 4 единиц?", "Which number has 3 tens and 4 ones?"), "34"),
   N("g1-word", 1, "problems", L("Mashada 7 ta olma bor edi. U 3 tasini yedi. Nechta olma qoldi?", "У Маши было 7 яблок. Она съела 3. Сколько яблок осталось?", "Masha had 7 apples. She ate 3. How many apples are left?"), "4"),
   N("g1-shape", 1, "geometry", L("Uchburchakning nechta tomoni bor?", "Сколько сторон у треугольника?", "How many sides does a triangle have?"), "3"),
+  N("g1-more", 1, "number", L("9 dan 3 ta ko‘p son qaysi?", "Какое число на 3 больше, чем 9?", "Which number is 3 more than 9?"), "12"),
+  N("g1-triple", 1, "operations", L(r`$2 + 2 + 2$ nechaga teng?`, r`Сколько будет $2 + 2 + 2$?`, r`What is $2 + 2 + 2$?`), "6"),
   // ── 2-sinf ──
   N("g2-add", 2, "operations", L(r`$36 + 27$ nechaga teng?`, r`Сколько будет $36 + 27$?`, r`What is $36 + 27$?`), "63"),
   N("g2-sub", 2, "operations", L(r`$52 - 18$ nechaga teng?`, r`Сколько будет $52 - 18$?`, r`What is $52 - 18$?`), "34"),
@@ -58,6 +64,16 @@ const MATH_ITEMS = [
   N("g2-length", 2, "measurement", L("1 metr necha santimetr?", "Сколько сантиметров в 1 метре?", "How many centimetres are in 1 metre?"), "100"),
   C("g2-square", 2, "geometry", L("Qaysi shaklning to‘rtta tomoni ham teng?", "У какой фигуры все четыре стороны равны?", "Which shape has four equal sides?"),
     [L("Kvadrat", "Квадрат", "Square"), L("Uchburchak", "Треугольник", "Triangle"), L("Doira", "Круг", "Circle"), L("Beshburchak", "Пятиугольник", "Pentagon")], 0),
+  // ── 3-sinf ──
+  N("g3-mul", 3, "operations", L(r`$8 \times 7$ nechaga teng?`, r`Сколько будет $8 \times 7$?`, r`What is $8 \times 7$?`), "56"),
+  N("g3-div", 3, "operations", L(r`$72 : 9$ nechaga teng?`, r`Сколько будет $72 : 9$?`, r`What is $72 \div 9$?`), "8"),
+  N("g3-add", 3, "operations", L(r`$125 + 278$ nechaga teng?`, r`Сколько будет $125 + 278$?`, r`What is $125 + 278$?`), "403"),
+  N("g3-sub", 3, "operations", L(r`$500 - 237$ nechaga teng?`, r`Сколько будет $500 - 237$?`, r`What is $500 - 237$?`), "263"),
+  N("g3-remainder", 3, "operations", L("17 ni 5 ga bo‘lganda qoldiq nechaga teng?", "Чему равен остаток при делении 17 на 5?", "What is the remainder when 17 is divided by 5?"), "2"),
+  N("g3-perimeter", 3, "geometry", L("To‘g‘ri to‘rtburchakning tomonlari 6 sm va 4 sm. Perimetri necha santimetr?", "Стороны прямоугольника 6 см и 4 см. Чему равен периметр в сантиметрах?", "A rectangle has sides 6 cm and 4 cm. What is its perimeter in centimetres?"), "20"),
+  N("g3-time", 3, "measurement", L("2 soat necha daqiqa?", "Сколько минут в 2 часах?", "How many minutes are in 2 hours?"), "120"),
+  N("g3-third", 3, "fractions", L(r`$12$ ning $\dfrac{1}{3}$ qismi nechaga teng?`, r`Чему равна $\dfrac{1}{3}$ от $12$?`, r`What is $\dfrac{1}{3}$ of $12$?`), "4"),
+  N("g3-share", 3, "problems", L("24 ta daftar 3 ta qutiga teng bo‘lib joylandi. Har bir qutida nechta daftar bor?", "24 тетради разложили поровну в 3 коробки. Сколько тетрадей в каждой коробке?", "24 notebooks are shared equally into 3 boxes. How many notebooks are in each box?"), "8"),
   // ── 4-sinf ──
   N("g4-mul", 4, "operations", L(r`$24 \times 5$ nechaga teng?`, r`Сколько будет $24 \times 5$?`, r`What is $24 \times 5$?`), "120"),
   N("g4-div", 4, "operations", L(r`$840 : 6$ nechaga teng?`, r`Сколько будет $840 : 6$?`, r`What is $840 \div 6$?`), "140"),
@@ -145,22 +161,22 @@ const MATH_ITEMS = [
 ];
 
 // O‘quvchi sinfi → ochiladigan sinf va savollar manbai: [savol sinfi, soni].
-// Hamma sinfda bir xil qoida: ochiladigan sinf — o‘z sinfidan bitta past (kamida 1); faqat hammasiga to‘g‘ri
-// javob bersa (openIfPerfect) o‘z sinfi ochiladi. Savollar: 1–4-sinf uchun 1–2-sinfdan; 5–11-sinf uchun
-// faqat bitta pastdagi sinfdan (8 → 7).
+// Hamma sinfda bir xil qoida: ochiladigan sinf — o‘z sinfidan bitta past (kamida 1); to‘g‘ri javoblar ≥ 90% bo‘lsa
+// (ownGrade) o‘z sinfi ochiladi. Savollar hamma joyda “bitta past sinf”dan: 2 → 1; 3 → 2; 4 → 2–3; 5 → 4; … 11 → 10.
+// 1-sinf uchun test yo‘q (NO_TEST_GRADES): o‘quvchi to‘g‘ridan-to‘g‘ri darslarni boshlaydi.
 const PLANS = {
-  1: { open: 1, openIfPerfect: 1, parts: [[1, 6]] },
-  2: { open: 1, openIfPerfect: 2, parts: [[1, 4], [2, 2]] },
-  3: { open: 2, openIfPerfect: 3, parts: [[1, 3], [2, 3]] },
-  4: { open: 3, openIfPerfect: 4, parts: [[1, 2], [2, 4]] },
-  5: { open: 4, openIfPerfect: 5, parts: [[4, 7]] },
-  6: { open: 5, openIfPerfect: 6, parts: [[5, 7]] },
-  7: { open: 6, openIfPerfect: 7, parts: [[6, 8]] },
-  8: { open: 7, openIfPerfect: 8, parts: [[7, 8]] },
-  9: { open: 8, openIfPerfect: 9, parts: [[8, 10]] },
-  10: { open: 9, openIfPerfect: 10, parts: [[9, 10]] },
-  11: { open: 10, openIfPerfect: 11, parts: [[10, 10]] },
+  2: { open: 1, ownGrade: 2, parts: [[1, 6]] },
+  3: { open: 2, ownGrade: 3, parts: [[2, 6]] },
+  4: { open: 3, ownGrade: 4, parts: [[2, 3], [3, 3]] },
+  5: { open: 4, ownGrade: 5, parts: [[4, 7]] },
+  6: { open: 5, ownGrade: 6, parts: [[5, 7]] },
+  7: { open: 6, ownGrade: 7, parts: [[6, 8]] },
+  8: { open: 7, ownGrade: 8, parts: [[7, 8]] },
+  9: { open: 8, ownGrade: 9, parts: [[8, 10]] },
+  10: { open: 9, ownGrade: 10, parts: [[9, 10]] },
+  11: { open: 10, ownGrade: 11, parts: [[10, 10]] },
 };
+const NO_TEST_GRADES = [1];
 
 // Matn ichidagi $…$ — matematik ifoda (KaTeX). Toq indeksdagi bo‘laklar ifoda.
 function splitMath(text) {
@@ -195,6 +211,17 @@ function getPlan(grade) {
 }
 function planTotal(plan) {
   return plan.parts.reduce((sum, [, count]) => sum + count, 0);
+}
+function requiresTest(grade) {
+  return !NO_TEST_GRADES.includes(grade) && PLANS[grade] !== undefined;
+}
+// Taxminiy vaqt (daqiqa): savollar soniga qarab. 6–8 ta savol ≈ 3, 10 ta savol ≈ 4.
+function estimateMinutes(total) {
+  return Math.max(2, Math.round((total * SECONDS_PER_QUESTION) / 60));
+}
+// 9–11-sinf: jiddiyroq uslub (konfetti, toj, qiziq bezaklarsiz).
+function isSeniorGrade(grade) {
+  return Number(grade) >= 9;
 }
 function pickText(value, lang) {
   if (!Array.isArray(value)) return value;
@@ -343,9 +370,10 @@ function buildResult({ studentGrade, plan, responses, startedAt, completedAt, la
   const baseLevel = accuracy >= 0.7 ? "strong" : accuracy >= 0.4 ? "partial" : "weak";
   const tooFastCount = responses.filter((response) => response.tooFast).length;
   const clearCut = accuracy >= 0.7 || accuracy <= 0.3;
-  // Hammasiga to‘g‘ri (100%) bo‘lsa o‘z sinfi; “Bilmayman” xato hisoblanadi.
+  // To‘g‘ri javoblar ≥ 90% bo‘lsa o‘z sinfi, aks holda bitta past; “Bilmayman” xato hisoblanadi.
   const perfectScore = totalQuestions > 0 && score === totalQuestions;
-  const openGrade = perfectScore && plan.openIfPerfect ? plan.openIfPerfect : plan.open;
+  const ownGradeUnlocked = totalQuestions > 0 && Boolean(plan.ownGrade) && score * 100 >= totalQuestions * Math.round(OWN_GRADE_THRESHOLD * 100);
+  const openGrade = ownGradeUnlocked ? plan.ownGrade : plan.open;
   const placementLevel = `grade_${openGrade}`;
   const durationSec = startedAt && completedAt ? Math.max(0, Math.round((Date.parse(completedAt) - Date.parse(startedAt)) / 1000)) : null;
   return {
@@ -364,6 +392,8 @@ function buildResult({ studentGrade, plan, responses, startedAt, completedAt, la
     studentGrade,
     openGrade,
     perfectScore,
+    ownGradeUnlocked,
+    ownGradeThreshold: OWN_GRADE_THRESHOLD,
     questionGrades: plan.parts.map(([grade]) => grade),
     baseLevel,
     accuracy,
@@ -371,6 +401,38 @@ function buildResult({ studentGrade, plan, responses, startedAt, completedAt, la
     startedAt: startedAt ?? null,
     completedAt: completedAt ?? null,
     durationSec,
+    engineVersion: ENGINE_VERSION,
+  };
+}
+
+// 1-sinf: test o‘tkazilmaydi, to‘g‘ridan-to‘g‘ri darslar. LMS tayyor natija oladi (ingliz “SELF_REPORT_KIDS” kabi).
+function buildNoTestResult({ studentGrade = 1, lang, now = new Date().toISOString() }) {
+  const placementLevel = `grade_${studentGrade}`;
+  return {
+    placementLevel,
+    recommendedCourse: placementLevel,
+    confidence: "high",
+    borderlineWith: null,
+    answeredCount: 0,
+    totalQuestions: 0,
+    score: 0,
+    levelStats: {},
+    skillStats: calculateSkillStats([]),
+    completionType: "NO_TEST_REQUIRED",
+    flags: { startInconsistent: false, inconsistency: false, audioError: false, tooFastCount: 0 },
+    responses: [],
+    studentGrade,
+    openGrade: studentGrade,
+    perfectScore: false,
+    ownGradeUnlocked: false,
+    ownGradeThreshold: OWN_GRADE_THRESHOLD,
+    questionGrades: [],
+    baseLevel: null,
+    accuracy: 0,
+    lang,
+    startedAt: now,
+    completedAt: now,
+    durationSec: 0,
     engineVersion: ENGINE_VERSION,
   };
 }
@@ -398,6 +460,13 @@ function isRestorableSession(parsed, itemMap, propGrade) {
   if (!parsed.plan || !Array.isArray(parsed.plan.parts)) return false;
   if ([...parsed.queue, ...parsed.responses.map((item) => item.itemId)].some((id) => !itemMap.has(id))) return false;
   return propGrade === null || parsed.studentGrade === propGrade;
+}
+
+// Diagnostika bir marta o‘tiladi: tugagan natija saqlanadi, qayta ochilganda test emas, natija ko‘rsatiladi.
+function isRestorableResult(saved, propGrade) {
+  if (!saved || saved.engineVersion !== ENGINE_VERSION || typeof saved.placementLevel !== "string") return false;
+  if (!["FULL_PLACEMENT", "NO_TEST_REQUIRED"].includes(saved.completionType)) return false;
+  return propGrade === null || saved.studentGrade === propGrade;
 }
 
 // Bank tekshiruvi: muammolar ro‘yxatini qaytaradi (bo‘sh bo‘lsa — to‘g‘ri).
@@ -434,7 +503,8 @@ const CONTENT = {
   uz: {
     hello: (name) => `Salom, ${name}!`,
     defaultName: "O‘quvchi",
-    minutes: "≈ 3 daqiqa",
+    minutes: (n) => `≈ ${n} daqiqa`,
+    minutesRange: "≈ 3–4 daqiqa",
     questionsCount: (n) => `${n} ta savol`,
     stepsTitle: "Savollar",
     pickOne: "Bitta variantni tanlang",
@@ -476,8 +546,8 @@ const CONTENT = {
     scoreLabel: "To‘g‘ri javoblar",
     openTitle: "Sizga mos sinf",
     openGrade: (n) => `${n}-sinf`,
-    openNote: "Qiyin sinfdan emas, takrorlash uchun qulay joydan boshlaymiz.",
-    openNotePerfect: "Hammasiga to‘g‘ri javob berdingiz — o‘z sinfingizdan boshlaysiz!",
+    openNoteBelow: (n) => `Avval ${n}-sinf mavzularini mustahkamlab olamiz`,
+    openNotePerfect: "Ajoyib natija — o‘z sinfingizdan boshlaysiz!",
     baseTitle: "Bilim bazasi",
     base: { strong: "Baza mustahkam", partial: "Baza qisman bor", weak: "Asoslarni mustahkamlaymiz" },
     baseNote: {
@@ -489,6 +559,16 @@ const CONTENT = {
     status: { know: "Biladi", partial: "Qisman", unknown: "Bilmaydi" },
     retake: "Qayta o‘tish",
     finish: "Yakunlash",
+    startLessons: "Darslarni boshlash",
+    noTestEyebrow: "Test shart emas",
+    noTestTitle: "Siz darslarni boshlashingiz mumkin!",
+    noTestText: "1-sinf uchun test shart emas — to‘g‘ridan-to‘g‘ri 1-sinf darslaridan boshlang.",
+    noTestHint: "1-sinf uchun test shart emas. Darslarni hoziroq boshlashingiz mumkin!",
+    goCalm: "Boshlaymiz",
+    soundOn: "Ovozni yoqish",
+    soundOff: "Ovozni o‘chirish",
+    keysLabel: "Maxsus belgilar",
+    keys: { minus: "Minus", slash: "Kasr chizig‘i", dot: "Nuqta", comma: "Vergul" },
     incompleteEyebrow: "Test tugallanmadi",
     incompleteTitle: "Daraja aniqlanmadi",
     incompleteText: "Sizga mos sinfni aniqlash uchun barcha savollarga javob berish kerak.",
@@ -501,7 +581,8 @@ const CONTENT = {
   ru: {
     hello: (name) => `Привет, ${name}!`,
     defaultName: "Ученик",
-    minutes: "≈ 3 минуты",
+    minutes: (n) => `≈ ${n} мин`,
+    minutesRange: "≈ 3–4 мин",
     questionsCount: (n) => `${n} вопросов`,
     stepsTitle: "Вопросы",
     pickOne: "Выбери один вариант",
@@ -543,8 +624,8 @@ const CONTENT = {
     scoreLabel: "Верных ответов",
     openTitle: "Подходящий тебе класс",
     openGrade: (n) => `${n} класс`,
-    openNote: "Начнём не со сложного, а с удобного места для повторения.",
-    openNotePerfect: "Все ответы верные — начинаешь со своего класса!",
+    openNoteBelow: (n) => `Сначала закрепим темы ${n} класса`,
+    openNotePerfect: "Отличный результат — начинаешь со своего класса!",
     baseTitle: "База знаний",
     base: { strong: "База крепкая", partial: "База есть частично", weak: "Укрепим основы" },
     baseNote: {
@@ -556,6 +637,16 @@ const CONTENT = {
     status: { know: "Знает", partial: "Частично", unknown: "Не знает" },
     retake: "Пройти заново",
     finish: "Завершить",
+    startLessons: "Начать уроки",
+    noTestEyebrow: "Тест не нужен",
+    noTestTitle: "Можно начинать уроки!",
+    noTestText: "Для 1 класса тест не нужен — начинай сразу с уроков 1 класса.",
+    noTestHint: "Для 1 класса тест не нужен. Можно сразу начать уроки!",
+    goCalm: "Начинаем",
+    soundOn: "Включить звук",
+    soundOff: "Выключить звук",
+    keysLabel: "Специальные символы",
+    keys: { minus: "Минус", slash: "Дробная черта", dot: "Точка", comma: "Запятая" },
     incompleteEyebrow: "Тест не завершён",
     incompleteTitle: "Уровень не определён",
     incompleteText: "Чтобы получить рекомендацию, нужно ответить на все вопросы.",
@@ -568,7 +659,8 @@ const CONTENT = {
   en: {
     hello: (name) => `Hi, ${name}!`,
     defaultName: "Student",
-    minutes: "≈ 3 minutes",
+    minutes: (n) => `≈ ${n} min`,
+    minutesRange: "≈ 3–4 min",
     questionsCount: (n) => `${n} questions`,
     stepsTitle: "Questions",
     pickOne: "Pick one option",
@@ -610,8 +702,8 @@ const CONTENT = {
     scoreLabel: "Correct answers",
     openTitle: "The grade that suits you",
     openGrade: (n) => `Grade ${n}`,
-    openNote: "We start from a comfortable place to review, not from a hard grade.",
-    openNotePerfect: "Every answer is correct — you start at your own grade!",
+    openNoteBelow: (n) => `First we will consolidate grade ${n} topics`,
+    openNotePerfect: "Great result — you start at your own grade!",
     baseTitle: "Knowledge base",
     base: { strong: "Strong base", partial: "Partial base", weak: "Let’s build the basics" },
     baseNote: {
@@ -623,6 +715,16 @@ const CONTENT = {
     status: { know: "Knows", partial: "Partly", unknown: "Does not know" },
     retake: "Take it again",
     finish: "Finish",
+    startLessons: "Start lessons",
+    noTestEyebrow: "No test needed",
+    noTestTitle: "You can start the lessons!",
+    noTestText: "No test is needed for grade 1 — start right away with the grade 1 lessons.",
+    noTestHint: "No test is needed for grade 1. You can start the lessons right away!",
+    goCalm: "Begin",
+    soundOn: "Turn sound on",
+    soundOff: "Mute sound",
+    keysLabel: "Special symbols",
+    keys: { minus: "Minus", slash: "Fraction slash", dot: "Dot", comma: "Comma" },
     incompleteEyebrow: "Test not finished",
     incompleteTitle: "Level not determined",
     incompleteText: "To get a recommendation, all questions must be answered.",
@@ -636,7 +738,8 @@ const CONTENT = {
 const DOMAIN_GLYPH = { number: "123", operations: "± ×", fractions: "½", problems: "?", measurement: "cm", geometry: "△", algebra: "x", functions: "f(x)", probability: "P" };
 const GLOWS = ["#fe5b1a", "#019acb", "#7c5cff", "#10b981", "#ec4899"];
 const CONFETTI_COLORS = ["#fe5b1a", "#019acb", "#7c5cff", "#10b981", "#ec4899", "#f59e0b"];
-const REACTION_MS = { ok: 1100, bad: 2300, skip: 2300 };
+// Faqat to‘g‘ri javobdan keyin o‘zi o‘tadi; xato va “Bilmayman”dan keyin o‘quvchi “Davom” ni bosadi.
+const REACTION_MS = { ok: 1100 };
 
 // ── Rasmlar (public/art) ──
 // Standart manzil: `${assetBase}/${nom}` (assetBase prop, standart "/art"). `npm run build:lms` bu ro‘yxatni
@@ -650,6 +753,8 @@ const ART = {
 };
 const RULE_ICONS = [ART.iconQuestions, ART.iconLesson, ART.iconDone];
 const GRADE_GROUPS = [[1, 4], [5, 9], [10, 11]];
+// Murakkab javoblar uchun belgilar tugmalari (barchasi bir xil o‘lchamda): minus, kasr chizig‘i, nuqta, vergul.
+const NUMBER_KEYS = [["−", "minus"], ["/", "slash"], [".", "dot"], [",", "comma"]];
 const DECOR = [
   { name: "cube.png", side: "left", top: 9, size: 84, delay: 0 },
   { name: "pyramid.png", side: "left", top: 70, size: 92, delay: -2.2 },
@@ -892,6 +997,23 @@ const CSS = `
 @keyframes mp-glowpulse{0%,100%{box-shadow:0 0 0 0 rgba(254,91,26,.45)}60%{box-shadow:0 0 0 14px rgba(254,91,26,0)}}
 @keyframes mp-wipe{from{clip-path:circle(0% at 50% 82%)}to{clip-path:circle(150% at 50% 82%)}}
 @keyframes mp-wipe-out{from{clip-path:circle(150% at 50% 50%);opacity:1}to{clip-path:circle(0% at 50% 50%);opacity:.6}}
+.mp-keys{display:flex;gap:8px;margin-top:clamp(8px,1.4vh,14px)}
+.mp-key{flex:none;display:grid;place-items:center;width:clamp(42px,6.4vh,54px);height:clamp(42px,6.4vh,54px);padding:0;border:1.5px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);font-size:clamp(20px,3vh,26px);font-weight:800;line-height:1;cursor:pointer;transition:transform .15s,border-color .2s,background .2s,color .2s}
+.mp-key:not(:disabled):hover{border-color:var(--accent);color:var(--accent);transform:translateY(-2px)}
+.mp-key:not(:disabled):active{transform:scale(.92);background:#fff5ef}
+.mp-key:disabled{opacity:.4;cursor:not-allowed}
+.mp-notice{display:flex;align-items:center;gap:12px;padding:clamp(10px,2vh,18px) 16px;border:1px solid #fcd2bd;border-radius:20px;background:#fff0e6;color:#bf4211;font-size:clamp(14px,2vh,17px);font-weight:700;line-height:1.4;animation:mp-rise .5s both}
+.mp-notice img{flex:none;width:clamp(28px,4vh,38px);height:auto}
+.mp-sound:hover{transform:scale(1.08)}
+.mp-sound.is-floating{position:absolute;top:10px;right:10px;z-index:7;background:rgba(255,255,255,.94);box-shadow:0 6px 16px rgba(63,39,27,.16)}
+.mp-count--calm{background:#151515;font-weight:300;font-size:clamp(64px,16vh,120px);animation:mp-fade .35s both}
+.mp-count--calm span{animation:mp-calm .55s ease both}
+.mp-count--calm span.is-go{font-size:.3em;font-weight:500;letter-spacing:.24em;text-transform:uppercase}
+.mp-count--calm.is-leaving{animation:mp-fadeout .4s ease forwards}
+.mp-root[data-tone=senior] .mp-decor,.mp-root[data-tone=senior] .mp-spark{display:none}
+.mp-notest h1{max-width:18ch}
+@keyframes mp-calm{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes mp-fadeout{to{opacity:0}}
 @keyframes mp-grow{from{transform:scaleX(0)}}
 @keyframes mp-float{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-18px) rotate(6deg)}}
 @keyframes mp-twinkle{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.15) rotate(8deg)}}
@@ -969,14 +1091,14 @@ const CSS = `
 `;
 
 // ── Ovoz (ixtiyoriy; brauzer bloklasa test ishlayveradi) ──
-function useSfx() {
+function useSfx(enabled = true) {
   const contextRef = useRef(null);
   useEffect(() => () => {
     contextRef.current?.close?.();
     contextRef.current = null;
   }, []);
   const play = useCallback((notes) => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !enabled) return;
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return;
     try {
@@ -1001,7 +1123,7 @@ function useSfx() {
     } catch {
       // Audio bloklangan bo‘lsa, diagnostika baribir ishlaydi.
     }
-  }, []);
+  }, [enabled]);
   return useMemo(() => ({
     correct: () => play([[660, 880, 0.18]]),
     wrong: () => play([[330, 220, 0.24]]),
@@ -1150,6 +1272,9 @@ function Dialog({ ui, onCancel, onConfirm }) {
 
 function IntroScreen({ ui, name, grade, lockedGrade, onPick, onStart, onHome }) {
   const plan = grade ? getPlan(grade) : null;
+  const noTest = Boolean(grade) && !requiresTest(grade);
+  const total = plan ? planTotal(plan) : 0;
+  const minutes = plan ? estimateMinutes(total) : null;
   return (
     <div className="mp-stage">
       <div className="mp-intro">
@@ -1158,20 +1283,20 @@ function IntroScreen({ ui, name, grade, lockedGrade, onPick, onStart, onHome }) 
           <div className="mp-hero-copy">
             <p className="mp-eyebrow mp-eyebrow--light mp-rise" style={{ "--d": "0ms" }}>{ui.hello(name)}</p>
             <h1 className="mp-rise" style={{ "--d": "90ms" }}>{ui.introTitle}</h1>
-            <ol className="mp-rules">
+            {!noTest && <ol className="mp-rules">
               {ui.rules.map((rule, index) => (
                 <li key={rule} className="mp-rise" style={{ "--d": `${240 + index * 150}ms` }}>
                   <i><Pic name={RULE_ICONS[index]} /></i>
                   <span>{rule}</span>
                 </li>
               ))}
-            </ol>
+            </ol>}
           </div>
           <Pic name={ART.sparkles} className="mp-spark" />
           <div className="mp-hero-foot">
             <div className="mp-chips">
-              <span className="mp-chip"><Pic name={ART.iconTime} />{ui.minutes}</span>
-              {plan && <span className="mp-chip"><Pic name={ART.iconQuestions} />{ui.questionsCount(planTotal(plan))}</span>}
+              {!noTest && <span className="mp-chip"><Pic name={ART.iconTime} />{minutes ? ui.minutes(minutes) : ui.minutesRange}</span>}
+              {plan && <span className="mp-chip"><Pic name={ART.iconQuestions} />{ui.questionsCount(total)}</span>}
             </div>
             <Pic name={ART.waving} className="mp-mascot-img" fallback={<MascotFallback />} />
           </div>
@@ -1203,6 +1328,9 @@ function IntroScreen({ ui, name, grade, lockedGrade, onPick, onStart, onHome }) 
               ))}
             </div>
           )}
+          {noTest ? (
+            <div className="mp-notice" aria-live="polite"><Pic name={ART.iconDone} /><span>{ui.noTestHint}</span></div>
+          ) : (
           <div className={`mp-stats ${plan ? "is-ready" : ""}`} aria-live="polite">
             <div className="mp-stat">
               <Pic name={ART.iconQuestions} />
@@ -1212,7 +1340,7 @@ function IntroScreen({ ui, name, grade, lockedGrade, onPick, onStart, onHome }) 
             <div className="mp-stat">
               <Pic name={ART.iconTime} />
               <span>{ui.statTime}</span>
-              <b key={`t${grade ?? "-"}`}>{plan ? "≈3" : "—"}<small>{plan ? ui.timeUnit : ""}</small></b>
+              <b key={`t${minutes ?? "-"}`}>{minutes ? `≈${minutes}` : "—"}<small>{minutes ? ui.timeUnit : ""}</small></b>
             </div>
             <div className="mp-stat">
               <Pic name={ART.iconLesson} />
@@ -1220,22 +1348,24 @@ function IntroScreen({ ui, name, grade, lockedGrade, onPick, onStart, onHome }) 
               <b key={`g${grade ?? "-"}`}>{grade ?? "—"}</b>
             </div>
           </div>
-          <button type="button" className="mp-btn mp-btn--lg mp-btn--block mp-btn--glow mp-btn--shine" disabled={!grade} onClick={onStart}>{ui.start} <span className="mp-arrow">→</span></button>
+          )}
+          <button type="button" className="mp-btn mp-btn--lg mp-btn--block mp-btn--glow mp-btn--shine" disabled={!grade} onClick={onStart}>{noTest ? ui.startLessons : ui.start} <span className="mp-arrow">→</span></button>
         </section>
       </div>
     </div>
   );
 }
 
-function QuestionCard({ item, ui, lang, seed, index, total, reaction, onAnswer, onNext }) {
+function QuestionCard({ item, ui, lang, seed, index, total, reaction, senior, onAnswer, onNext }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
+  const inputRef = useRef(null);
   const answered = reaction?.response ?? null;
   const state = answered ? (answered.skipped ? "skip" : answered.correct ? "ok" : "bad") : "idle";
   const order = useMemo(() => (item.type === "choice" ? seededShuffle(item.options.map((_, i) => i), seed, `opts-${item.id}`) : []), [item, seed]);
   const messageIndex = hashString(`${seed}:${item.id}`);
   const message = state === "ok" ? ui.correct[messageIndex % ui.correct.length] : state === "bad" ? ui.wrong[messageIndex % ui.wrong.length] : ui.skipped;
-  const pose = state === "ok" ? (messageIndex % 2 ? ART.thumbs : ART.celebrate) : state === "bad" ? ART.point : state === "skip" ? ART.laptop : ART.think;
+  const pose = state === "ok" ? (senior || messageIndex % 2 ? ART.thumbs : ART.celebrate) : state === "bad" ? ART.point : state === "skip" ? ART.laptop : ART.think;
   const isLast = index === total - 1;
   const isChoice = item.type === "choice";
   const submitNumber = () => {
@@ -1245,7 +1375,23 @@ function QuestionCard({ item, ui, lang, seed, index, total, reaction, onAnswer, 
     onAnswer({ value: value.trim(), text: value.trim(), skipped: false });
   };
   const skip = () => onAnswer({ value: null, text: null, skipped: true });
-  const inputMode = Array.isArray(item.answer) || String(item.answer).includes("/") ? "text" : "decimal";
+  // Faqat raqam va . , / − belgilari qabul qilinadi; harf kiritilsa jimgina olib tashlanadi (12 belgigacha).
+  const cleanInput = (text) => text.replace(/[^0-9.,/\-−\s]/g, "").slice(0, 12);
+  const insertSymbol = (symbol) => {
+    if (answered) return;
+    const field = inputRef.current;
+    const start = field?.selectionStart ?? value.length;
+    const end = field?.selectionEnd ?? start;
+    const next = cleanInput(`${value.slice(0, start)}${symbol}${value.slice(end)}`);
+    setValue(next);
+    setError("");
+    requestAnimationFrame(() => {
+      if (!field) return;
+      field.focus();
+      const caret = Math.min(start + 1, next.length);
+      field.setSelectionRange(caret, caret);
+    });
+  };
   return (
     <article className="mp-card mp-qcard" data-state={state} data-item={item.id}>
       <div className="mp-qmain">
@@ -1271,11 +1417,17 @@ function QuestionCard({ item, ui, lang, seed, index, total, reaction, onAnswer, 
           </div>
         ) : (
           <div>
-            <input className={`mp-input ${answered ? (answered.correct ? "is-ok" : "is-bad") : ""}`} value={answered ? (answered.answer ?? "") : value}
-              onChange={(event) => { setValue(event.target.value); if (error) setError(""); }}
+            <input ref={inputRef} className={`mp-input ${answered ? (answered.correct ? "is-ok" : "is-bad") : ""}`} value={answered ? (answered.answer ?? "") : value}
+              onChange={(event) => { setValue(cleanInput(event.target.value)); if (error) setError(""); }}
               onKeyDown={(event) => { if (event.key === "Enter") submitNumber(); }}
               disabled={Boolean(answered)} placeholder={ui.placeholder} aria-label={ui.placeholder}
-              inputMode={inputMode} enterKeyHint="done" autoComplete="off" autoCapitalize="off" autoFocus />
+              inputMode="decimal" enterKeyHint="done" autoComplete="off" autoCapitalize="off" autoFocus />
+            <div className="mp-keys" role="group" aria-label={ui.keysLabel}>
+              {NUMBER_KEYS.map(([symbol, keyName]) => (
+                <button key={keyName} type="button" className="mp-key" data-key={symbol} aria-label={ui.keys[keyName]} title={ui.keys[keyName]}
+                  disabled={Boolean(answered)} onMouseDown={(event) => event.preventDefault()} onClick={() => insertSymbol(symbol)}>{symbol}</button>
+              ))}
+            </div>
             {error && <p className="mp-error" role="alert">{error}</p>}
           </div>
         )}
@@ -1291,8 +1443,8 @@ function QuestionCard({ item, ui, lang, seed, index, total, reaction, onAnswer, 
                 {state !== "ok" && <span>{ui.rightAnswer}: <AnswerView item={item} lang={lang} /></span>}
               </div>
             </div>
-            <button type="button" className="mp-btn mp-btn--shine" onClick={onNext}>{isLast ? ui.seeResult : ui.next} <span className="mp-arrow">→</span></button>
-            <i className="mp-timer" style={{ animationDuration: `${REACTION_MS[state]}ms` }} />
+            <button type="button" className={`mp-btn mp-btn--shine ${state === "ok" ? "" : "mp-btn--glow"}`} onClick={onNext}>{isLast ? ui.seeResult : ui.next} <span className="mp-arrow">→</span></button>
+            {state === "ok" && <i className="mp-timer" style={{ animationDuration: `${REACTION_MS.ok}ms` }} />}
           </>
         ) : (
           <>
@@ -1307,32 +1459,35 @@ function QuestionCard({ item, ui, lang, seed, index, total, reaction, onAnswer, 
   );
 }
 
-function QuizScreen({ item, ui, lang, seed, index, total, responses, reaction, onAnswer, onNext, onExit }) {
+function QuizScreen({ item, ui, lang, seed, index, total, responses, reaction, senior, soundOn, onToggleSound, onAnswer, onNext, onExit }) {
   return (
     <div className="mp-stage">
       <div className="mp-focus">
         <header className="mp-top">
           <Progress total={total} responses={responses} activeIndex={index} />
           <span className="mp-counter">{index + 1} / {total}</span>
+          <SoundToggle on={soundOn} onToggle={onToggleSound} ui={ui} />
           <button type="button" className="mp-icon-btn" onClick={onExit} aria-label={ui.exit} title={ui.exit}>✕</button>
         </header>
-        <QuestionCard key={item.id} item={item} ui={ui} lang={lang} seed={seed} index={index} total={total} reaction={reaction} onAnswer={onAnswer} onNext={onNext} />
+        <QuestionCard key={item.id} item={item} ui={ui} lang={lang} seed={seed} index={index} total={total} reaction={reaction} senior={senior} onAnswer={onAnswer} onNext={onNext} />
       </div>
     </div>
   );
 }
 
-function ResultScreen({ ui, name, result, onRetake, onHome }) {
+function ResultScreen({ ui, name, result, senior, onHome }) {
   const tested = DOMAIN_IDS.filter((domain) => result.skillStats[domain].total > 0);
   const offset = 326.7 * (1 - result.accuracy);
-  const pose = result.perfectScore ? ART.trophy : result.baseLevel === "strong" ? ART.celebrate : result.baseLevel === "partial" ? ART.checklist : ART.books;
-  const atOwnGrade = result.perfectScore && result.openGrade === result.studentGrade;
+  const pose = senior
+    ? (result.baseLevel === "weak" ? ART.laptop : ART.checklist)
+    : result.perfectScore ? ART.trophy : result.baseLevel === "strong" ? ART.celebrate : result.baseLevel === "partial" ? ART.checklist : ART.books;
+  const atOwnGrade = result.ownGradeUnlocked && result.openGrade === result.studentGrade;
   return (
     <div className="mp-stage">
-      <Confetti />
+      {!senior && <Confetti />}
       <div className="mp-resultgrid">
         <section className="mp-orange mp-hero mp-orange--result">
-          {atOwnGrade && <Pic name={ART.crown} className="mp-crown" />}
+          {atOwnGrade && !senior && <Pic name={ART.crown} className="mp-crown" />}
           <Pic name={ART.sparkles} className="mp-spark" />
           <div className="mp-hero-copy">
             <p className="mp-eyebrow mp-eyebrow--light mp-rise" style={{ "--d": "0ms" }}>{ui.resultEyebrow}</p>
@@ -1346,7 +1501,7 @@ function ResultScreen({ ui, name, result, onRetake, onHome }) {
             <div className="mp-open">
               <span className="mp-label">{ui.openTitle}</span>
               <b>{ui.openGrade(result.openGrade)}</b>
-              <small>{atOwnGrade ? ui.openNotePerfect : ui.openNote}</small>
+              <small>{atOwnGrade ? ui.openNotePerfect : ui.openNoteBelow(result.openGrade)}</small>
             </div>
           </div>
           <div className="mp-hero-foot">
@@ -1378,7 +1533,6 @@ function ResultScreen({ ui, name, result, onRetake, onHome }) {
             })}
           </div>
           <div className="mp-actions mp-rise" style={{ "--d": `${450 + tested.length * 60}ms` }}>
-            <button type="button" className="mp-btn mp-btn--soft" onClick={onRetake}>{ui.retake}</button>
             <button type="button" className="mp-btn mp-btn--glow mp-btn--shine" onClick={onHome}>{ui.finish} <span className="mp-arrow">→</span></button>
           </div>
         </section>
@@ -1405,7 +1559,60 @@ function IncompleteScreen({ ui, incomplete, onRetake, onHome }) {
   );
 }
 
-export { MATH_ITEMS, PLANS, getPlan, buildQueue, buildResult, buildResponse, answersMatch, isCorrectAnswer, isRestorableSession, validateMathBank, normalizeGrade, splitMath, texToPlain };
+// Ovozni yoqish/o‘chirish tugmasi (standart — yoqiq). Testda sarlavhada, boshqa ekranlarda yuqori o‘ng burchakda.
+function SoundToggle({ on, onToggle, ui, floating = false }) {
+  const label = on ? ui.soundOff : ui.soundOn;
+  return (
+    <button type="button" className={`mp-icon-btn mp-sound ${floating ? "is-floating" : ""}`} aria-pressed={on} aria-label={label} title={label} onClick={onToggle}>
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4z" fill="currentColor" />
+        {on ? (<><path d="M15.5 9a4 4 0 0 1 0 6" /><path d="M18 6.5a7.5 7.5 0 0 1 0 11" /></>) : <path d="M16 9.5l5 5M21 9.5l-5 5" />}
+      </svg>
+    </button>
+  );
+}
+
+// 1-sinf: savol yo‘q — do‘stona oyna, to‘g‘ridan-to‘g‘ri darslarga.
+function NoTestScreen({ ui, name, onHome }) {
+  return (
+    <div className="mp-stage">
+      <section className="mp-card mp-incomplete mp-notest">
+        <Pic name={ART.celebrate} className="mp-rise" fallback={<MascotFallback />} />
+        <p className="mp-eyebrow mp-rise" style={{ "--d": "80ms" }}>{ui.hello(name)}</p>
+        <h1 className="mp-rise" style={{ "--d": "140ms" }}>{ui.noTestTitle}</h1>
+        <p className="mp-rise" style={{ "--d": "220ms" }}>{ui.noTestText}</p>
+        <button type="button" className="mp-btn mp-btn--lg mp-btn--glow mp-btn--shine mp-rise" style={{ "--d": "300ms" }} onClick={onHome}>{ui.startLessons} <span className="mp-arrow">→</span></button>
+      </section>
+    </div>
+  );
+}
+
+// Tugagan natija va ovoz sozlamasi brauzerda saqlanadi.
+function loadCompleted(storageKey, propGrade) {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(`${storageKey}-done`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return isRestorableResult(parsed, propGrade) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+function saveCompleted(storageKey, result) {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(`${storageKey}-done`, JSON.stringify(result)); } catch { /* storage yopiq */ }
+}
+function loadSoundPref(storageKey) {
+  if (typeof window === "undefined") return true;
+  try { return window.localStorage.getItem(`${storageKey}-sound`) !== "off"; } catch { return true; }
+}
+function saveSoundPref(storageKey, on) {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(`${storageKey}-sound`, on ? "on" : "off"); } catch { /* storage yopiq */ }
+}
+
+export { MATH_ITEMS, PLANS, getPlan, requiresTest, estimateMinutes, isSeniorGrade, buildNoTestResult, isRestorableResult, buildQueue, buildResult, buildResponse, answersMatch, isCorrectAnswer, isRestorableSession, validateMathBank, normalizeGrade, splitMath, texToPlain };
 
 /**
  * @param {{
@@ -1442,14 +1649,22 @@ export default function MathPlacement({
   const propGrade = normalizeGrade(studentGrade);
   const name = (studentName ?? "").trim() || ui.defaultName;
   const itemMap = useMemo(() => new Map(itemBank.map((item) => [item.id, item])), [itemBank]);
-  const [session, setSession] = useState(() => safeLoadSession(storageKey, itemMap, propGrade) ?? createInitialSession(attemptSeed ?? Date.now(), propGrade));
+  const [session, setSession] = useState(() => {
+    const seed = attemptSeed ?? Date.now();
+    const done = loadCompleted(storageKey, propGrade);
+    if (done) {
+      return { ...createInitialSession(seed, propGrade), phase: done.completionType === "NO_TEST_REQUIRED" ? "notest" : "result", studentGrade: done.studentGrade, result: done };
+    }
+    return safeLoadSession(storageKey, itemMap, propGrade) ?? createInitialSession(seed, propGrade);
+  });
+  const [soundOn, setSoundOn] = useState(() => loadSoundPref(storageKey));
   const [pickedGrade, setPickedGrade] = useState(null);
   const [countdown, setCountdown] = useState(null);
   const [reaction, setReaction] = useState(null);
   const [exitOpen, setExitOpen] = useState(false);
   const questionStartedAtRef = useRef(0);
   const completionReportedRef = useRef(false);
-  const sfx = useSfx();
+  const sfx = useSfx(soundOn);
   const katexLib = useKatex(katex, katexBase);
 
   useEffect(() => { saveSession(storageKey, session); }, [storageKey, session]);
@@ -1458,6 +1673,12 @@ export default function MathPlacement({
   const activeIndex = reaction ? answeredCount - 1 : answeredCount;
   const currentItem = session.phase === "quiz" ? (reaction?.item ?? itemMap.get(session.queue[activeIndex]) ?? null) : null;
   const grade = propGrade ?? pickedGrade ?? session.studentGrade;
+  const senior = isSeniorGrade(grade);
+  const toggleSound = () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    saveSoundPref(storageKey, next);
+  };
 
   useEffect(() => {
     if (currentItem && !reaction) questionStartedAtRef.current = Date.now();
@@ -1470,6 +1691,18 @@ export default function MathPlacement({
     completionReportedRef.current = false;
     setSession({ ...session, phase: "quiz", studentGrade: grade, plan, queue, responses: [], result: null, incomplete: null, startedAt: new Date().toISOString() });
   }, [grade, itemBank, session]);
+
+  // 1-sinf: test yo‘q. Tayyor natija LMS ga yuboriladi va do‘stona oyna ochiladi.
+  const startNoTest = useCallback(() => {
+    const result = buildNoTestResult({ studentGrade: grade, lang: activeLang });
+    setSession({ ...session, phase: "notest", studentGrade: grade, plan: null, queue: [], responses: [], result });
+    saveCompleted(storageKey, result);
+    if (!completionReportedRef.current) {
+      completionReportedRef.current = true;
+      onProgress?.({ status: "complete", answeredCount: 0, responses: [], phase: "notest" });
+      onComplete?.(result);
+    }
+  }, [activeLang, grade, onComplete, onProgress, session, storageKey]);
 
   useEffect(() => {
     if (countdown === null) return undefined;
@@ -1502,18 +1735,19 @@ export default function MathPlacement({
     const completedAt = new Date().toISOString();
     const result = buildResult({ studentGrade: session.studentGrade, plan: session.plan, responses: session.responses, startedAt: session.startedAt, completedAt, lang: activeLang });
     setSession({ ...session, phase: "result", result });
+    saveCompleted(storageKey, result);
     sfx.finish();
     if (!completionReportedRef.current) {
       completionReportedRef.current = true;
       onProgress?.({ status: "complete", answeredCount: result.answeredCount, responses: result.responses, phase: "result" });
       onComplete?.(result);
     }
-  }, [activeLang, onComplete, onProgress, reaction, session, sfx]);
+  }, [activeLang, onComplete, onProgress, reaction, session, sfx, storageKey]);
 
+  // Faqat to‘g‘ri javobdan keyin o‘zi o‘tadi; xato va “Bilmayman”dan keyin “Davom” tugmasi bosiladi.
   useEffect(() => {
-    if (!reaction) return undefined;
-    const state = reaction.response.skipped ? "skip" : reaction.response.correct ? "ok" : "bad";
-    const timer = setTimeout(advance, REACTION_MS[state]);
+    if (!reaction || !reaction.response.correct) return undefined;
+    const timer = setTimeout(advance, REACTION_MS.ok);
     return () => clearTimeout(timer);
   }, [reaction, advance]);
 
@@ -1543,17 +1777,23 @@ export default function MathPlacement({
     onProgress?.({ status: "incomplete", phase: "incomplete", reasonCode: incomplete.reasonCode, answeredCount: incomplete.answeredCount, responses: session.responses });
   }, [onProgress, session]);
 
-  const glow = session.phase === "quiz" ? GLOWS[Math.max(activeIndex, 0) % GLOWS.length] : GLOWS[0];
+  const glow = session.phase === "quiz" && !senior ? GLOWS[Math.max(activeIndex, 0) % GLOWS.length] : GLOWS[0];
   let screen = null;
   if (session.phase === "intro") {
-    screen = <IntroScreen ui={ui} name={name} grade={grade} lockedGrade={propGrade !== null} onPick={setPickedGrade} onStart={() => { sfx.tick(); setCountdown(3); }} onHome={onHome} />;
+    screen = (
+      <IntroScreen ui={ui} name={name} grade={grade} lockedGrade={propGrade !== null} onPick={setPickedGrade} onHome={onHome}
+        onStart={() => { sfx.tick(); if (requiresTest(grade)) setCountdown(senior ? 2 : 3); else startNoTest(); }} />
+    );
   } else if (session.phase === "quiz" && currentItem) {
     screen = (
       <QuizScreen item={currentItem} ui={ui} lang={activeLang} seed={session.seed} index={activeIndex} total={session.queue.length}
-        responses={session.responses} reaction={reaction} onAnswer={answerCurrent} onNext={advance} onExit={() => setExitOpen(true)} />
+        responses={session.responses} reaction={reaction} senior={senior} soundOn={soundOn} onToggleSound={toggleSound}
+        onAnswer={answerCurrent} onNext={advance} onExit={() => setExitOpen(true)} />
     );
   } else if (session.phase === "result" && session.result) {
-    screen = <ResultScreen ui={ui} name={name} result={session.result} onRetake={resetTest} onHome={onHome} />;
+    screen = <ResultScreen ui={ui} name={name} result={session.result} senior={senior} onHome={onHome} />;
+  } else if (session.phase === "notest" && session.result) {
+    screen = <NoTestScreen ui={ui} name={name} onHome={onHome} />;
   } else if (session.phase === "incomplete" && session.incomplete) {
     screen = <IncompleteScreen ui={ui} incomplete={session.incomplete} onRetake={resetTest} onHome={onHome} />;
   }
@@ -1561,13 +1801,14 @@ export default function MathPlacement({
   return (
     <ArtContext.Provider value={assetBase}>
       <KatexContext.Provider value={katexLib}>
-        <div className="mp-root" style={{ "--glow": glow }}>
+        <div className="mp-root" data-tone={senior ? "senior" : "junior"} style={{ "--glow": glow }}>
           <style>{CSS}</style>
           <Decor />
           {screen}
+          {session.phase !== "quiz" && <SoundToggle on={soundOn} onToggle={toggleSound} ui={ui} floating />}
           {countdown !== null && (
-            <div className={`mp-count ${countdown === -1 ? "is-leaving" : ""}`} role="status" aria-live="assertive">
-              <span key={Math.max(countdown, 0)} className={countdown <= 0 ? "is-go" : ""}>{countdown <= 0 ? ui.go : countdown}</span>
+            <div className={`mp-count ${senior ? "mp-count--calm" : ""} ${countdown === -1 ? "is-leaving" : ""}`} role="status" aria-live="assertive">
+              <span key={Math.max(countdown, 0)} className={countdown <= 0 ? "is-go" : ""}>{countdown <= 0 ? (senior ? ui.goCalm : ui.go) : countdown}</span>
             </div>
           )}
           {exitOpen && <Dialog ui={ui} onCancel={() => setExitOpen(false)} onConfirm={exitTest} />}

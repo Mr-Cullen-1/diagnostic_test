@@ -12,25 +12,35 @@ Manba o‘zgarsa, `npm run build:lms` bilan LMS faylini yangilang (test eskirgan
 
 ## Mantiq
 
-O‘quvchi sinfi → sizga mos (ochiladigan) sinf va savollar manbai:
+O‘quvchi sinfi → savollar manbai → sizga mos (ochiladigan) sinf:
 
-| O‘quvchi sinfi | Ochiladigan sinf | Savollar qaysi sinfdan | Savollar soni |
-|---|---|---|---|
-| 1 | 1 | 1-sinf | 6 |
-| 2 | 1 (100% bo‘lsa 2) | 1–2-sinf | 6 |
-| 3 | 2 (100% bo‘lsa 3) | 1–2-sinf | 6 |
-| 4 | 3 (100% bo‘lsa 4) | 1–2-sinf | 6 |
-| 5 | 4 (100% bo‘lsa 5) | 4-sinf | 7 |
-| 6 | 5 (100% bo‘lsa 6) | 5-sinf | 7 |
-| 7 | 6 (100% bo‘lsa 7) | 6-sinf | 8 |
-| 8 | 7 (100% bo‘lsa 8) | 7-sinf | 8 |
-| 9 / 10 / 11 | 8 / 9 / 10 (100% bo‘lsa o‘z sinfi) | 8 / 9 / 10-sinf | 10 |
+| O‘quvchi sinfi | Savollar qaysi sinfdan | Savollar soni | ≥ 90% bo‘lsa | Aks holda |
+|---|---|---|---|---|
+| 1 | **test yo‘q** | 0 | 1-sinf (darslar) | — |
+| 2 | 1 | 6 | 2 | 1 |
+| 3 | 2 | 6 | 3 | 2 |
+| 4 | 2–3 | 6 | 4 | 3 |
+| 5 | 4 | 7 | 5 | 4 |
+| 6 | 5 | 7 | 6 | 5 |
+| 7 | 6 | 8 | 7 | 6 |
+| 8 | 7 | 8 | 8 | 7 |
+| 9 | 8 | 10 | 9 | 8 |
+| 10 | 9 | 10 | 10 | 9 |
+| 11 | 10 | 10 | 11 | 10 |
 
-- **Ochiladigan sinf (1–11-sinf, bir xil qoida):** o‘z sinfidan bitta past (kamida 1-sinf). Faqat hammasiga to‘g‘ri javob (100%) bersa o‘z sinfi ochiladi; bitta xato yoki “Bilmayman” ham 100% ni buzadi.
-- Savollar: 5–11-sinf uchun faqat bitta pastdagi sinfdan (8-sinf → 7-sinf savollari); 1–4-sinf uchun 1–2-sinfdan.
-- Faqat qisqa savol va qisqa javob (son yoki 4 variantli tanlov). ≈3 daqiqa.
-- Maqsad aniqlik emas — baza bor-yo‘qligini ko‘rish. Ochiladigan sinf qoidadan keladi; natija uni faqat 100% holatida o‘z sinfiga ko‘taradi.
-- Natija: to‘g‘ri javoblar, baza darajasi (`strong` ≥70%, `partial` ≥40%, `weak`), mavzular bo‘yicha “biladi / qisman / bilmaydi”.
+- **Qoida (hamma sinfda bir xil):** savollar doim bitta past sinfdan. To‘g‘ri javoblar **≥ 90%** bo‘lsa o‘z sinfi, aks holda bitta past sinf (kamida 1) ochiladi. “Bilmayman” xato hisoblanadi.
+  Natijasi: 10 ta savolli testda (9–11-sinf) **1 ta xato mumkin**; 6–8 ta savolli testda (2–8-sinf) o‘z sinfi uchun **hammasi to‘g‘ri** bo‘lishi kerak (5/6 = 83%, 6/7 = 86%, 7/8 = 87,5% — 90% dan past). Chegara `OWN_GRADE_THRESHOLD` da.
+- **Natijada tushuntirish:** sinf pasaytirilganda “Avval N-sinf mavzularini mustahkamlab olamiz” deb yoziladi (baza darajasi “mustahkam” bo‘lsa ham mantiqiy ko‘rinadi).
+- **1-sinf:** savol berilmaydi. “1-sinf uchun test shart emas — darslarni boshlang” oynasi chiqadi, LMS ga tayyor natija yuboriladi (`completionType: "NO_TEST_REQUIRED"`, `placementLevel: "grade_1"`, 0 savol).
+- **Bir marta o‘tiladi:** tugagan natija brauzerda saqlanadi (`${storageKey}-done`); qayta ochilganda test emas, o‘sha natija ko‘rsatiladi, “Qayta o‘tish” tugmasi yo‘q, `onComplete` qayta chaqirilmaydi. Haqiqiy cheklov (kursni ochish, qayta urinishni bloklash) LMS tomonida. Vercel sinov panelida “Qayta boshlash” yangi urinish boshlaydi.
+- **✕ / yopilgan tab:** o‘zgarmagan — tab yopilsa test shu joydan davom etadi; ✕ bosilsa test “tugallanmadi” bo‘ladi (`onComplete` yo‘q), o‘quvchi qayta o‘tishi mumkin. Kursni boshlash uchun diagnostikadan o‘tish shart (LMS qarori).
+- **Javob kiritish:** raqam maydoni ostida bir xil o‘lchamdagi belgi tugmalari `−`, `/`, `.`, `,` doim ko‘rinib turadi; harflar qabul qilinmaydi (jimgina olib tashlanadi), 12 belgigacha. Vergul va nuqta teng (`3,5` = `3.5`), `4/5` = `0,8`.
+- **Reaksiya:** to‘g‘ri javobdan keyin 1–2 soniyada o‘zi o‘tadi; xato va “Bilmayman”dan keyin o‘tmaydi — o‘quvchi to‘g‘ri javobni o‘qib, “Davom” ni bosadi.
+- **Vaqt savollar soniga qarab:** 6–8 ta savol ≈ 3 daqiqa, 10 ta savol ≈ 4 daqiqa (sinf tanlanmaguncha “≈ 3–4”).
+- **9–11-sinf — jiddiyroq uslub:** 3‑2‑1 sanoq o‘rniga qisqa to‘q fon va “Boshlaymiz”, konfetti, toj va 3D bezaklarsiz, ranglar o‘zgarmaydi, maskot xotirjam pozalarda.
+- **Ovoz:** yuqori o‘ng burchakda yoqish/o‘chirish tugmasi (standart — yoqiq, tanlov brauzerda saqlanadi).
+- Faqat qisqa savol va qisqa javob (son yoki 4 variantli tanlov). Maqsad aniqlik emas — baza bor-yo‘qligini ko‘rish.
+- Natija: to‘g‘ri javoblar, baza darajasi (`strong` ≥70%, `partial` ≥40%, `weak`), mavzular bo‘yicha “biladi / qisman / bilmaydi” (mavzuga 1–3 savol to‘g‘ri keladi, shuning uchun “qisman” faqat 2+ savolli mavzuda bo‘ladi).
 - Savollar sinf o‘sish tartibida, mavzular xilma-xil, urug‘ (`attemptSeed`) bo‘yicha aniq takrorlanadi.
 
 ## LMS shartnomasi (ingliz tili diagnostikasidagi mexanizm bo‘yicha)
@@ -42,18 +52,18 @@ O‘quvchi sinfi → sizga mos (ochiladigan) sinf va savollar manbai:
   studentName="Aziza"       // ixtiyoriy
   storageKey="math-placement-v1"   // localStorage kaliti (sessiya tiklash)
   attemptSeed={undefined}   // ixtiyoriy
-  itemBank={undefined}      // ixtiyoriy, standart — ichki 82 ta savol
+  itemBank={undefined}      // ixtiyoriy, standart — ichki 93 ta savol
   assetBase="/art"          // rasmlar manzili (standart "/art")
   katex={undefined}         // ixtiyoriy: KaTeX nusxasi; bo‘lmasa window.katex yoki CDN (katexBase)
   onHome={() => {}}
   onProgress={(e) => {}}    // { status: "in_progress"|"complete"|"incomplete", answeredCount, responses, phase, response?, reasonCode? }
-  onComplete={(result) => {}} // natija ekrani chiqqanda BIR marta; erta chiqishda chaqirilmaydi
+  onComplete={(result) => {}} // natija ekrani chiqqanda BIR marta; erta chiqishda chaqirilmaydi; 1-sinfda test o‘rniga tayyor natija
 />
 ```
 
 `result` kalitlari ingliz tilidagi bilan bir xil: `placementLevel`, `recommendedCourse` (satr, masalan `"grade_5"`), `confidence`, `borderlineWith`,
-`answeredCount`, `totalQuestions`, `score`, `levelStats`, `skillStats`, `completionType` (`"FULL_PLACEMENT"`), `flags`, `responses`.
-Matematikaga xos qo‘shimchalar: `studentGrade`, `openGrade` (son), `perfectScore`, `questionGrades`, `baseLevel`, `accuracy`, `lang`, `startedAt`, `completedAt`, `durationSec`, `engineVersion`.
+`answeredCount`, `totalQuestions`, `score`, `levelStats`, `skillStats`, `completionType` (`"FULL_PLACEMENT"` yoki 1-sinfda `"NO_TEST_REQUIRED"`), `flags`, `responses`.
+Matematikaga xos qo‘shimchalar: `studentGrade`, `openGrade` (son), `perfectScore` (hammasi to‘g‘ri), `ownGradeUnlocked` (≥ 90%, o‘z sinfi ochildi), `ownGradeThreshold`, `questionGrades`, `baseLevel`, `accuracy`, `lang`, `startedAt`, `completedAt`, `durationSec`, `engineVersion`.
 
 Komponent faqat brauzerda ishlaydi (`localStorage`, `window`): serverda render qilinmasin yoki mount’dan keyin chiqarilsin.
 

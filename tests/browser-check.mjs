@@ -74,6 +74,8 @@ const shot = async (name) => {
 };
 const viewport = (width, height, mobile) => send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: mobile ? 2 : 1, mobile });
 const open = async (query) => {
+  // Diagnostika bir marta o‘tiladi (natija saqlanadi), shuning uchun har ssenariy toza brauzer xotirasi bilan boshlanadi.
+  try { await evaluate(`localStorage.clear()`); } catch { /* about:blank */ }
   await send('Page.navigate', { url: `${BASE}/${query}` });
   await waitFor(`document.readyState==='complete' && !!document.querySelector('.mp-root')`, 'sahifa yuklandi');
 };
@@ -132,20 +134,53 @@ try {
   check('Anketa yo‘q: sahifa to‘g‘ridan-to‘g‘ri diagnostikani ko‘rsatadi', (await evaluate(`document.body.innerText`)).includes('математике'));
   check('Sinf LMS dan berilganda tanlash tugmalari ko‘rinmaydi', !(await evaluate(`!!document.querySelector('.mp-tiles')`)));
   await shot('A1-intro-mobile');
+  check('Vaqt savollar soniga qarab: 10 ta savol → ≈ 4 daqiqa', await evaluate(`document.querySelector('.mp-hero .mp-chips').textContent.includes('≈ 4')`));
   await startTest();
   await shot('A2-question-mobile');
+  const soundState = () => evaluate(`document.querySelector('.mp-sound')?.getAttribute('aria-pressed')`);
+  const soundBefore = await soundState();
+  await click('.mp-sound');
+  await sleep(250);
+  const soundMuted = await soundState();
+  await click('.mp-sound');
+  await sleep(250);
+  const soundAgain = await soundState();
+  check('Ovoz tugmasi bor, standart yoqiq; bosilsa o‘chadi, qayta bosilsa yoqiladi', soundBefore === 'true' && soundMuted === 'false' && soundAgain === 'true', JSON.stringify([soundBefore, soundMuted, soundAgain]));
+  check('9-sinf: jiddiyroq uslub (data-tone=senior)', await evaluate(`document.querySelector('.mp-root').dataset.tone === 'senior'`));
   const total = Number((await textOf('.mp-counter')).split('/')[1]);
   check('9-sinf: 10 ta savol', total === 10, `total=${total}`);
   const modes = ['right', 'wrong', 'right', 'skip', 'right', 'right', 'wrong', 'right', 'right', 'right'];
   let allReactions = true;
   let barChecked = false;
+  let keysChecked = false;
+  let waitedWrong = false;
   let sawKatex = false;
   const seenGrades = new Set();
   for (let i = 0; i < total; i += 1) {
     sawKatex ||= await evaluate(`!!document.querySelector('.mp-q .katex')`);
     const bar = await evaluate(`(() => { const all = [...document.querySelectorAll('.mp-qbar .mp-btn')]; const soft = all.find((b) => b.classList.contains('mp-btn--soft')); const main = all.find((b) => !b.classList.contains('mp-btn--soft')); if (!soft || !main) return null; const s = soft.getBoundingClientRect(); const m = main.getBoundingClientRect(); const card = document.querySelector('.mp-qcard').getBoundingClientRect(); return { softAtLeft: s.left <= card.left + 60, sameLine: Math.abs(s.top - m.top) < 6, softLeftOfMain: s.right <= m.left, mainAtRight: m.right > card.right - 40, atBottom: m.bottom > card.bottom - 40 }; })()`);
     if (bar && !barChecked) { barChecked = true; check('Telefon: “Bilmayman” chapda, “Tekshirish” o‘ngda, pastda, bir qatorda', bar.softAtLeft && bar.sameLine && bar.softLeftOfMain && bar.mainAtRight && bar.atBottom, JSON.stringify(bar)); await shot('A2b-bar-mobile'); }
+    const currentId = await evaluate(`document.querySelector('.mp-qcard')?.dataset.item`);
+    const currentItem = MATH_ITEMS.find((entry) => entry.id === currentId);
+    if (currentItem.type === 'number' && !keysChecked) {
+      keysChecked = true;
+      await evaluate(`document.querySelector('.mp-input').focus()`);
+      for (const symbol of ['/', '.', ',', '−']) await click(`.mp-key[data-key="${symbol}"]`);
+      await send('Input.insertText', { text: 'abc' });
+      const typed = await evaluate(`document.querySelector('.mp-input').value`);
+      const sizes = await evaluate(`[...document.querySelectorAll('.mp-key')].map((k) => { const r = k.getBoundingClientRect(); return Math.round(r.width) + 'x' + Math.round(r.height); })`);
+      check('Belgi tugmalari (/ . , −): kiritiladi, harf kiritilmaydi, hammasi bir xil o‘lchamda',
+        [...typed].sort().join('') === [...'/.,−'].sort().join('') && sizes.length === 4 && new Set(sizes).size === 1, JSON.stringify({ typed, sizes }));
+      await shot('A2c-keys-mobile');
+      await evaluate(`(() => { const f = document.querySelector('.mp-input'); f.focus(); f.select(); document.execCommand('delete'); })()`);
+    }
     const { item, reactionOk } = await answerQuestion('ru', modes[i]);
+    if (modes[i] === 'wrong' && !waitedWrong) {
+      waitedWrong = true;
+      await sleep(3200);
+      check('Xato javobdan keyin o‘zi o‘tmaydi (faqat “Davom” bilan)',
+        (await evaluate(`document.querySelector('.mp-qcard')?.dataset.item`)) === currentId && (await evaluate(`!!document.querySelector('.mp-fbtext')`)));
+    }
     seenGrades.add(item.grade);
     allReactions &&= reactionOk;
     if (i === 1) await shot('A3-wrong-reaction-mobile');
@@ -160,6 +195,10 @@ try {
   await sleep(1600);
   await shot('A4-result-mobile');
   check('Mobilda gorizontal siljish yo‘q', await evaluate(`document.documentElement.scrollWidth <= window.innerWidth`));
+  check('Natija: “Qayta o‘tish” yo‘q (bir marta o‘tiladi); 9-sinfda konfetti va toj yo‘q',
+    await evaluate(`document.querySelectorAll('.mp-actions .mp-btn').length === 1 && !document.querySelector('.mp-confetti') && !document.querySelector('.mp-crown')`));
+  check('Natija: “Sizga mos sinf” + pasaytirish izohi (Сначала закрепим темы 8 класса)',
+    await evaluate(`(() => { const o = document.querySelector('.mp-open'); return !!o && o.textContent.includes('Подходящий') && o.textContent.includes('Сначала закрепим темы 8'); })()`));
   await openLog();
   const kinds = await eventKinds();
   const result = await readCompleteJson();
@@ -171,6 +210,13 @@ try {
   check('Natija: responses[10], skipped=1', result?.responses?.length === 10 && result.responses.filter((r) => r.skipped).length === 1);
   check('Davomiylik 3–4 daqiqadan oshmaydi (avtomat skript uchun juda kam)', typeof result?.durationSec === 'number' && result.durationSec < 240, String(result?.durationSec));
   await click('.lms-toolbar button', 'Callback');
+  // Bir marta o‘tiladi: yangilansa natija ko‘rsatiladi va LMS ga qayta yuborilmaydi.
+  await send('Page.reload');
+  await waitFor(`document.readyState==='complete' && !!document.querySelector('.mp-root')`, 'qayta yuklandi (natija)');
+  await sleep(900);
+  check('Bir marta o‘tiladi: sahifa yangilansa test qayta boshlanmaydi, natija ko‘rsatiladi', await evaluate(`!!document.querySelector('.mp-ring') && !document.querySelector('.mp-setup')`));
+  await openLog();
+  check('Natija qayta yuborilmaydi (onComplete/onProgress chaqirilmaydi)', (await eventKinds()).length === 0);
 
   // ── B. Sinf berilmaydi: tanlash, erta chiqish ──
   await open('?lang=uz');
@@ -187,7 +233,7 @@ try {
   check('3-sinf: 6 ta savol', total3 === 6, String(total3));
   await answerQuestion('uz', 'right');
   await nextQuestion();
-  await click('.mp-icon-btn[aria-label]', undefined);
+  await click('.mp-icon-btn:not(.mp-sound)');
   await waitFor(`!!document.querySelector('.mp-dialog')`, 'chiqish dialogi');
   await shot('B2-exit-dialog-mobile');
   await click('.mp-dialog .mp-btn:not(.mp-btn--soft)');
@@ -211,33 +257,49 @@ try {
   const counter = await textOf('.mp-counter');
   check('Yangilashdan keyin sessiya tiklanadi (2 ta javobdan keyin 3-savol)', counter?.trim() === '3 / 7' || counter?.trim() === '2 / 7', String(counter));
 
-  // ── D. 1-sinf, kichik ekran, desktop, til almashinuvi ──
-  await open('?lang=uz&grade=1');
+  // ── D. 2-sinf (savollar 1-sinfdan), 1-sinf (test yo‘q), desktop, til almashinuvi ──
+  await open('?lang=uz&grade=2');
   await startTest();
-  const total1 = Number((await textOf('.mp-counter')).split('/')[1]);
-  check('1-sinf: 6 ta savol', total1 === 6, String(total1));
-  const grades1 = new Set();
-  for (let i = 0; i < total1; i += 1) {
+  const total2 = Number((await textOf('.mp-counter')).split('/')[1]);
+  check('2-sinf: 6 ta savol', total2 === 6, String(total2));
+  const grades2 = new Set();
+  for (let i = 0; i < total2; i += 1) {
     const { item } = await answerQuestion('uz', 'right');
-    grades1.add(item.grade);
-    if (i < total1 - 1) await nextQuestion();
+    grades2.add(item.grade);
+    if (i < total2 - 1) await nextQuestion();
   }
-  check('1-sinf savollari faqat 1-sinfdan', [...grades1].every((g) => g === 1));
+  check('2-sinf savollari faqat 1-sinfdan', grades2.size === 1 && grades2.has(1), [...grades2].join());
   await click('.mp-qbar .mp-btn');
   await waitFor(`!!document.querySelector('.mp-ring')`, 'natija');
-  const result1 = await (async () => { await openLog(); return readCompleteJson(); })();
-  check('1-sinf → ochiladigan modul grade_1', result1?.placementLevel === 'grade_1', result1?.placementLevel);
+  const result2 = await (async () => { await openLog(); return readCompleteJson(); })();
+  check('2-sinf, 6/6 → o‘z sinfi: grade_2', result2?.placementLevel === 'grade_2' && result2?.ownGradeUnlocked === true, result2?.placementLevel);
+  check('Kichik sinfda konfetti bor', await evaluate(`!!document.querySelector('.mp-confetti')`));
+
+  // 1-sinf: savol yo‘q, do‘stona oyna
+  await open('?lang=uz&grade=1');
+  check('1-sinf: qoidalar ro‘yxati va statistika yo‘q, do‘stona izoh va “Darslarni boshlash” bor',
+    await evaluate(`!document.querySelector('.mp-rules') && !document.querySelector('.mp-stats') && !!document.querySelector('.mp-notice') && document.querySelector('.mp-setup .mp-btn--block').textContent.includes('Darslarni boshlash')`));
+  await click('.mp-setup .mp-btn--block');
+  await waitFor(`!!document.querySelector('.mp-notest')`, '1-sinf oynasi');
+  await openLog();
+  const kinds1 = await eventKinds();
+  const result1 = await readCompleteJson();
+  check('1-sinf: savol yo‘q, onComplete 1 marta (NO_TEST_REQUIRED, grade_1, 0 savol)',
+    !(await evaluate(`!!document.querySelector('.mp-q')`)) && kinds1.filter((k) => k === 'onComplete:').length === 1
+    && result1?.completionType === 'NO_TEST_REQUIRED' && result1?.placementLevel === 'grade_1' && result1?.answeredCount === 0, JSON.stringify([kinds1, result1?.completionType]));
+  await shot('D0-notest-mobile');
   await viewport(1280, 800, false);
   await sleep(1500);
-  await shot('D1-result-desktop');
+  await shot('D1-notest-desktop');
   await open('?lang=en&grade=11');
   await startTest();
   await shot('D2-question-desktop');
+  const englishQuestion = await textOf('.mp-q');
   check('11-sinf: 10 ta savol', Number((await textOf('.mp-counter')).split('/')[1]) === 10);
   check('Desktop: “Bilmayman” karta chap chetida (markazda emas)', await evaluate(`(() => { const s = document.querySelector('.mp-qbar .mp-btn--soft').getBoundingClientRect(); const c = document.querySelector('.mp-qcard').getBoundingClientRect(); return s.left <= c.left + 80; })()`));
   const seen11 = new Set();
   for (let i = 0; i < 10; i += 1) {
-    const { item } = await answerQuestion('en', 'right');
+    const { item } = await answerQuestion('en', i === 3 ? 'wrong' : 'right');
     seen11.add(item.grade);
     if (i < 9) await nextQuestion();
   }
@@ -245,11 +307,10 @@ try {
   await click('.mp-qbar .mp-btn');
   await waitFor(`!!document.querySelector('.mp-ring')`, 'natija (11-sinf)');
   const result11 = await (async () => { await openLog(); return readCompleteJson(); })();
-  check('11-sinf, 10/10 → o‘z sinfida qoladi: grade_11, perfectScore', result11?.placementLevel === 'grade_11' && result11?.perfectScore === true, JSON.stringify([result11?.placementLevel, result11?.perfectScore]));
+  check('11-sinf, 9/10 (90%) → o‘z sinfida qoladi: grade_11, perfectScore=false', result11?.placementLevel === 'grade_11' && result11?.ownGradeUnlocked === true && result11?.perfectScore === false, JSON.stringify([result11?.placementLevel, result11?.ownGradeUnlocked, result11?.perfectScore]));
   await sleep(1400);
   await shot('D3-result-perfect-desktop');
-  const ptext = await textOf('.mp-q');
-  check('Ingliz tilidagi savol matni', /[a-z]/i.test(ptext) && !/[а-яё]/i.test(ptext), ptext);
+  check('Ingliz tilidagi savol matni', /[a-z]/i.test(englishQuestion) && !/[а-яё]/i.test(englishQuestion), englishQuestion);
 } catch (error) {
   check(`Skript xatosi: ${error.message}`, false, error.stack);
 } finally {

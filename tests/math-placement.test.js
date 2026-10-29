@@ -9,10 +9,12 @@ const source = readFileSync(new URL('../app/math-placement.jsx', import.meta.url
 const logic = source.slice(source.indexOf('// <logic>'), source.indexOf('// </logic>'));
 const api = runInNewContext(`${logic}
   ({ MATH_ITEMS, PLANS, LANGS, DOMAIN_IDS, getPlan, planTotal, buildQueue, buildResult, buildResponse, answersMatch,
-     isCorrectAnswer, isRestorableSession, validateMathBank, normalizeGrade, createInitialSession, correctAnswerText, splitMath, texToPlain })
+     isCorrectAnswer, isRestorableSession, validateMathBank, normalizeGrade, createInitialSession, correctAnswerText, splitMath, texToPlain,
+     requiresTest, estimateMinutes, isSeniorGrade, buildNoTestResult, isRestorableResult })
 `);
 const { MATH_ITEMS, PLANS, LANGS, DOMAIN_IDS, getPlan, planTotal, buildQueue, buildResult, buildResponse, answersMatch,
-  isCorrectAnswer, isRestorableSession, validateMathBank, normalizeGrade, createInitialSession, correctAnswerText, splitMath, texToPlain } = api;
+  isCorrectAnswer, isRestorableSession, validateMathBank, normalizeGrade, createInitialSession, correctAnswerText, splitMath, texToPlain,
+  requiresTest, estimateMinutes, isSeniorGrade, buildNoTestResult, isRestorableResult } = api;
 
 // Ingliz diagnostikasi natijasidagi kalitlar (LMS shartnomasi) — matematika ularning hammasini saqlashi shart.
 const ENGLISH_RESULT_KEYS = [
@@ -27,8 +29,8 @@ const ENGLISH_RESPONSE_KEYS = [
 // vm konteksti massivlari boshqa realm’dan keladi, shuning uchun JSON orqali solishtiramiz.
 const same = (actual, expected, message) => assert.deepEqual(JSON.parse(JSON.stringify(actual)), JSON.parse(JSON.stringify(expected)), message);
 
-// 1–4-sinf: 1–2-sinf savollari. 5–11-sinf: aynan bitta pastdagi sinf (8 → 7, 5 → 4).
-const sourceGradesFor = (grade) => (grade <= 4 ? [1, 2] : [grade - 1]);
+// Savollar hamma joyda “bitta past sinf”dan: 2 → 1; 3 → 2; 4 → 2–3; 5 → 4; … 11 → 10. 1-sinfda savol yo‘q.
+const sourceGradesFor = (grade) => (grade === 4 ? [2, 3] : [grade - 1]);
 
 test('savollar banki to‘liq: 3 til, takrorsiz id, qisqa matn, to‘g‘ri variantlar', () => {
   same(validateMathBank(MATH_ITEMS), []);
@@ -38,7 +40,7 @@ test('savollar banki to‘liq: 3 til, takrorsiz id, qisqa matn, to‘g‘ri vari
     // Uzunlik so‘zlar bo‘yicha: $…$ ichidagi KaTeX belgilari hisobga olinmaydi.
     for (const text of item.q) assert.ok(text.replace(/\$[^$]*\$/g, 'xxxxxx').length <= 150, `${item.id} savol juda uzun`);
   }
-  same([...new Set(MATH_ITEMS.map((item) => item.grade))].sort((a, b) => a - b), [1, 2, 4, 5, 6, 7, 8, 9, 10]);
+  same([...new Set(MATH_ITEMS.map((item) => item.grade))].sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 });
 
 test('savollar qisqa javobli: yozma/uzun javob talab qiladigan tur yo‘q', () => {
@@ -51,36 +53,30 @@ test('savollar qisqa javobli: yozma/uzun javob talab qiladigan tur yo‘q', () =
   }
 });
 
-test('rejalar: ochiladigan sinf (1–11: 1 past, kamida 1), savollar kerakli sinflardan, soni 5–6 va 7–10', () => {
-  // Savol soni: 1–4 → 6; 5, 6 → 7; 7, 8 → 8; 9–11 → 10.
-  const expectedCount = { 1: 6, 2: 6, 3: 6, 4: 6, 5: 7, 6: 7, 7: 8, 8: 8, 9: 10, 10: 10, 11: 10 };
+test('rejalar: 1-sinfda test yo‘q; 2–11-sinfda savollar bitta past sinfdan, ochiladigan sinf bitta past', () => {
+  // Savol soni: 2–4 → 6; 5, 6 → 7; 7, 8 → 8; 9–11 → 10.
+  const expectedCount = { 2: 6, 3: 6, 4: 6, 5: 7, 6: 7, 7: 8, 8: 8, 9: 10, 10: 10, 11: 10 };
   for (const [grade, count] of Object.entries(expectedCount)) assert.equal(planTotal(getPlan(Number(grade))), count, `${grade}-sinf savol soni`);
-  for (let grade = 5; grade <= 11; grade += 1) {
-    same(getPlan(grade).parts.map(([partGrade]) => partGrade), [grade - 1], `${grade}-sinf: faqat ${grade - 1}-sinf savollari`);
-  }
-  for (let grade = 1; grade <= 11; grade += 1) {
-    const plan = getPlan(grade);
-    const expectedOpen = Math.max(1, grade - 1);
-    assert.equal(plan.open, expectedOpen, `${grade}-sinf ochiladigan sinf`);
-    const allowed = sourceGradesFor(grade);
-    plan.parts.forEach(([partGrade]) => assert.ok(allowed.includes(partGrade), `${grade}-sinf: ${partGrade}-sinf savoli`));
-    const total = planTotal(plan);
-    if (grade <= 4) assert.ok(total >= 5 && total <= 6, `${grade}-sinf savol soni ${total}`);
-    else assert.ok(total >= 7 && total <= 10, `${grade}-sinf savol soni ${total}`);
-  }
+  assert.equal(getPlan(1), null, '1-sinfda test yo‘q');
+  assert.equal(requiresTest(1), false);
   assert.equal(getPlan(12), null);
-  same([1, 2, 3, 4].map((g) => PLANS[g].open), [1, 1, 2, 3]);
-  same([5, 6, 7, 8, 9, 10, 11].map((g) => PLANS[g].open), [4, 5, 6, 7, 8, 9, 10]);
-  // 100% bo‘lsa o‘z sinfi — 1–11-sinfning hammasida.
-  same([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((g) => PLANS[g].openIfPerfect), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-  for (let grade = 5; grade <= 11; grade += 1) {
-    const available = MATH_ITEMS.filter((item) => item.grade === grade - 1).length;
-    assert.ok(available >= planTotal(getPlan(grade)), `${grade}-sinf uchun ${grade - 1}-sinf banki yetarli emas (${available})`);
+  for (let grade = 2; grade <= 11; grade += 1) {
+    assert.equal(requiresTest(grade), true, `${grade}-sinf`);
+    const plan = getPlan(grade);
+    assert.equal(plan.open, Math.max(1, grade - 1), `${grade}-sinf ochiladigan sinf`);
+    assert.equal(plan.ownGrade, grade, `${grade}-sinf: o‘z sinfi`);
+    same(plan.parts.map(([partGrade]) => partGrade), sourceGradesFor(grade), `${grade}-sinf savollari qaysi sinfdan`);
+    plan.parts.forEach(([partGrade, count]) => {
+      const pool = MATH_ITEMS.filter((item) => item.grade === partGrade).length;
+      assert.ok(pool >= count, `${grade}-sinf uchun ${partGrade}-sinf banki yetarli emas (${pool} < ${count})`);
+    });
   }
+  same([2, 3, 4].map((g) => PLANS[g].open), [1, 2, 3]);
+  same([5, 6, 7, 8, 9, 10, 11].map((g) => PLANS[g].open), [4, 5, 6, 7, 8, 9, 10]);
 });
 
 test('savol navbati: har sinf uchun to‘liq, takrorsiz, sinf o‘sish tartibida, urug‘ bo‘yicha aniq', () => {
-  for (let grade = 1; grade <= 11; grade += 1) {
+  for (let grade = 2; grade <= 11; grade += 1) {
     const plan = getPlan(grade);
     for (const seed of [1, 2, 3, 12345, 20260903]) {
       const queue = buildQueue(MATH_ITEMS, plan, seed);
@@ -130,7 +126,9 @@ test('har bir savolning javobi o‘z tekshiruvidan o‘tadi (3 tilda ko‘rsatil
 
 test('matematik to‘g‘rilik: raqamli javoblar savol matni bilan mos', () => {
   const expected = {
-    'g1-add': 9, 'g1-sub': 8, 'g1-next': 15, 'g1-tens': 34, 'g1-word': 7 - 3, 'g1-shape': 3,
+    'g1-add': 9, 'g1-sub': 8, 'g1-next': 15, 'g1-tens': 34, 'g1-word': 7 - 3, 'g1-shape': 3, 'g1-more': 9 + 3, 'g1-triple': 2 + 2 + 2,
+    'g3-mul': 8 * 7, 'g3-div': 72 / 9, 'g3-add': 125 + 278, 'g3-sub': 500 - 237, 'g3-remainder': 17 % 5,
+    'g3-perimeter': 2 * (6 + 4), 'g3-time': 120, 'g3-third': 12 / 3, 'g3-share': 24 / 3,
     'g2-add': 36 + 27, 'g2-sub': 52 - 18, 'g2-mul': 6 * 7, 'g2-div': 36 / 4, 'g2-boxes': 5 * 4, 'g2-length': 100,
     'g4-mul': 24 * 5, 'g4-div': 840 / 6, 'g4-fraction': (3 / 4) * 20, 'g4-area': 8 * 5, 'g4-units': 2300, 'g4-speed': 60 * 3,
     'g5-fracadd': 1 / 2 + 1 / 3, 'g5-decimal': 0.6 + 0.25, 'g5-percent': 0.25 * 80, 'g5-triarea': (10 * 6) / 2,
@@ -212,29 +210,71 @@ test('natija: baza darajasi va mavzu holati', () => {
   assert.equal(sixOfTen.confidence, 'medium');
 });
 
-test('ochiladigan sinf: 1–11-sinfda 1 past (kamida 1), faqat 100% bo‘lsa o‘z sinfida', () => {
-  for (let grade = 1; grade <= 11; grade += 1) {
+test('ochiladigan sinf: to‘g‘ri javoblar ≥ 90% bo‘lsa o‘z sinfi, aks holda bitta past (kamida 1)', () => {
+  for (let grade = 2; grade <= 11; grade += 1) {
+    const total = planTotal(getPlan(grade));
     const below = Math.max(1, grade - 1);
-    const perfect = runAttempt(grade, () => true);
-    assert.equal(perfect.placementLevel, `grade_${grade}`, `${grade}-sinf 100%`);
-    assert.equal(perfect.openGrade, grade);
-    assert.equal(perfect.perfectScore, true);
-    const oneWrong = runAttempt(grade, (_, i) => i !== 0);
-    assert.equal(oneWrong.placementLevel, `grade_${below}`, `${grade}-sinf bitta xato`);
-    assert.equal(oneWrong.openGrade, below);
-    assert.equal(oneWrong.perfectScore, false);
-    assert.equal(runAttempt(grade, () => false).placementLevel, `grade_${below}`, `${grade}-sinf 0%`);
+    const passes = (wrong) => (total - wrong) * 10 >= total * 9;
+    for (const wrong of [0, 1, 2]) {
+      const result = runAttempt(grade, (_, i) => i >= wrong);
+      const expected = passes(wrong) ? grade : below;
+      assert.equal(result.openGrade, expected, `${grade}-sinf, ${wrong} ta xato`);
+      assert.equal(result.placementLevel, `grade_${expected}`);
+      assert.equal(result.ownGradeUnlocked, passes(wrong));
+      assert.equal(result.perfectScore, wrong === 0);
+    }
+    assert.equal(runAttempt(grade, () => false).openGrade, below, `${grade}-sinf 0%`);
   }
-  // 1–4-sinf: 4 → 3, 3 → 2, 2 → 1, 1 → 1 (bitta xatoda); hammasi to‘g‘ri bo‘lsa o‘z sinfi.
-  same([1, 2, 3, 4].map((g) => runAttempt(g, (_, i) => i !== 0).openGrade), [1, 1, 2, 3]);
-  same([1, 2, 3, 4].map((g) => runAttempt(g, () => true).openGrade), [1, 2, 3, 4]);
-  // “Bilmayman” xato hisoblanadi: 100% emas.
-  const plan = getPlan(8);
-  const queue = buildQueue(MATH_ITEMS, plan, 3);
-  const responses = queue.map((id, index) => buildResponse({
-    item: MATH_ITEMS.find((entry) => entry.id === id), lang: 'uz', correct: index !== 2, skipped: index === 2, answerText: '1', answerTimeMs: 4000,
-  }));
-  assert.equal(buildResult({ studentGrade: 8, plan, responses, startedAt: null, completedAt: null, lang: 'uz' }).placementLevel, 'grade_7');
+  // 10 ta savolda 1 ta xato mumkin (9/10 = 90%); 6–8 ta savolda esa hammasi to‘g‘ri bo‘lishi kerak.
+  assert.equal(runAttempt(9, (_, i) => i !== 0).openGrade, 9);
+  assert.equal(runAttempt(11, (_, i) => i !== 3).openGrade, 11);
+  assert.equal(runAttempt(10, (_, i) => i > 1).openGrade, 9, '8/10 = 80% → bitta past');
+  assert.equal(runAttempt(8, (_, i) => i !== 0).openGrade, 7, '7/8 = 87,5% → bitta past');
+  assert.equal(runAttempt(5, (_, i) => i !== 0).openGrade, 4, '6/7 = 86% → bitta past');
+  assert.equal(runAttempt(3, (_, i) => i !== 0).openGrade, 2, '5/6 = 83% → bitta past');
+  assert.equal(runAttempt(2, (_, i) => i !== 0).openGrade, 1, '2-sinf: 5/6 → 1-sinf');
+  assert.equal(runAttempt(4, () => true).openGrade, 4);
+  // “Bilmayman” xato hisoblanadi: 9/10 bo‘lsa o‘tadi, 8-sinfda (7/8) o‘tmaydi.
+  const skipOne = (grade, skipIndex) => {
+    const plan = getPlan(grade);
+    const queue = buildQueue(MATH_ITEMS, plan, 3);
+    const responses = queue.map((id, index) => buildResponse({
+      item: MATH_ITEMS.find((entry) => entry.id === id), lang: 'uz', correct: index !== skipIndex, skipped: index === skipIndex, answerText: '1', answerTimeMs: 4000,
+    }));
+    return buildResult({ studentGrade: grade, plan, responses, startedAt: null, completedAt: null, lang: 'uz' });
+  };
+  assert.equal(skipOne(8, 2).placementLevel, 'grade_7');
+  assert.equal(skipOne(9, 2).placementLevel, 'grade_9');
+  assert.equal(skipOne(9, 2).perfectScore, false);
+});
+
+test('1-sinf: test yo‘q, tayyor natija (NO_TEST_REQUIRED) LMS kalitlari bilan', () => {
+  const result = buildNoTestResult({ studentGrade: 1, lang: 'uz', now: '2026-10-29T08:00:00.000Z' });
+  for (const key of ENGLISH_RESULT_KEYS) assert.ok(key in result, `natijada ${key} yo‘q`);
+  assert.equal(result.completionType, 'NO_TEST_REQUIRED');
+  assert.equal(result.placementLevel, 'grade_1');
+  assert.equal(result.recommendedCourse, 'grade_1');
+  assert.equal(result.openGrade, 1);
+  assert.equal(result.totalQuestions, 0);
+  assert.equal(result.answeredCount, 0);
+  same(result.responses, []);
+  same(Object.keys(result.skillStats), DOMAIN_IDS);
+});
+
+test('bir marta o‘tiladi: tugagan natija tiklanadi (mos sinf va versiya bilan)', () => {
+  const full = runAttempt(9, () => true);
+  assert.ok(isRestorableResult(full, 9));
+  assert.ok(isRestorableResult(full, null));
+  assert.ok(!isRestorableResult(full, 8), 'boshqa sinf');
+  assert.ok(!isRestorableResult({ ...full, engineVersion: 'eski' }, 9));
+  assert.ok(!isRestorableResult({ ...full, completionType: 'INCOMPLETE' }, 9));
+  assert.ok(!isRestorableResult(null, 9));
+  assert.ok(isRestorableResult(buildNoTestResult({ studentGrade: 1, lang: 'ru' }), 1));
+});
+
+test('taxminiy vaqt savollar soniga qarab; 9–11-sinfda jiddiyroq uslub', () => {
+  same([6, 7, 8, 10].map(estimateMinutes), [3, 3, 3, 4]);
+  same([1, 8, 9, 11].map(isSeniorGrade), [false, false, true, true]);
 });
 
 test('sessiyani tiklash faqat tugamagan, mos sinfli, ma’lum savollar uchun', () => {
