@@ -63,6 +63,12 @@ for (const [w, h, mobile, tag] of sizes) {
     await click('.mp-tile', '7'); await sleep(600);
     await measure(`${tag}/${lang} intro (sinf tanlangan)`);
     if (lang === 'uz') await shot(`${tag}-intro-picked`);
+    // 1-sinf: test yo‘q, ma’lumotlar birma-bir chiqadi (animatsiya tugagandan keyin o‘lchanadi)
+    await ev(`try { localStorage.clear(); } catch (e) {}`);
+    await send('Page.navigate', { url: `${BASE}/?lang=${lang}&grade=1&embed=1` });
+    await waitFor(`!!document.querySelector('.mp-root')`, 'intro1'); await sleep(3400);
+    await measure(`${tag}/${lang} intro (1-sinf, test yo‘q)`);
+    if (lang === 'uz') await shot(`${tag}-intro-grade1`);
     await ev(`try { localStorage.clear(); } catch (e) {}`);
     await send('Page.navigate', { url: `${BASE}/?lang=${lang}&grade=9&embed=1` });
     await waitFor(`!!document.querySelector('.mp-root')`, 'intro2'); await sleep(700);

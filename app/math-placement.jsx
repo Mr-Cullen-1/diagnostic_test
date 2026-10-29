@@ -564,6 +564,13 @@ const CONTENT = {
     noTestTitle: "Siz darslarni boshlashingiz mumkin!",
     noTestText: "1-sinf uchun test shart emas — to‘g‘ridan-to‘g‘ri 1-sinf darslaridan boshlang.",
     noTestHint: "1-sinf uchun test shart emas. Darslarni hoziroq boshlashingiz mumkin!",
+    noTestIntroTitle: "Darslar siz uchun ochiq!",
+    perks: [
+      { title: "Darslar ochiq", text: "“Darslarni boshlash” tugmasini bosing va davom eting." },
+      { title: "Coin va pointlar yig‘ing", text: "Kunlik darslar va vazifalarni bajaring — mukofot oling." },
+      { title: "Mavzuli mashqlar", text: "Qo‘shimcha mashq qilish uchun har bir mavzuga alohida mashqlar bor." },
+    ],
+    perkStats: [["Darslar", "Ochiq"], ["Coin", "Yig‘ing"], ["Mashq", "Mavzuli"]],
     goCalm: "Boshlaymiz",
     soundOn: "Ovozni yoqish",
     soundOff: "Ovozni o‘chirish",
@@ -642,6 +649,13 @@ const CONTENT = {
     noTestTitle: "Можно начинать уроки!",
     noTestText: "Для 1 класса тест не нужен — начинай сразу с уроков 1 класса.",
     noTestHint: "Для 1 класса тест не нужен. Можно сразу начать уроки!",
+    noTestIntroTitle: "Уроки для тебя открыты!",
+    perks: [
+      { title: "Уроки открыты", text: "Нажми «Начать уроки» и продолжай." },
+      { title: "Копи коины и поинты", text: "Проходи ежедневные уроки и задания — получай награды." },
+      { title: "Упражнения по темам", text: "Для дополнительной практики у каждой темы есть свои упражнения." },
+    ],
+    perkStats: [["Уроки", "Открыты"], ["Коины", "Копи"], ["Практика", "По темам"]],
     goCalm: "Начинаем",
     soundOn: "Включить звук",
     soundOff: "Выключить звук",
@@ -720,6 +734,13 @@ const CONTENT = {
     noTestTitle: "You can start the lessons!",
     noTestText: "No test is needed for grade 1 — start right away with the grade 1 lessons.",
     noTestHint: "No test is needed for grade 1. You can start the lessons right away!",
+    noTestIntroTitle: "Your lessons are open!",
+    perks: [
+      { title: "Lessons are open", text: "Press “Start lessons” and carry on." },
+      { title: "Collect coins and points", text: "Finish the daily lessons and tasks to earn rewards." },
+      { title: "Practice by topic", text: "Every topic has its own extra exercises to practise with." },
+    ],
+    perkStats: [["Lessons", "Open"], ["Coins", "Collect"], ["Practice", "By topic"]],
     goCalm: "Begin",
     soundOn: "Turn sound on",
     soundOff: "Mute sound",
@@ -750,8 +771,12 @@ const ART = {
   point: "mascot-point.png", trophy: "mascot-trophy.png", checklist: "mascot-checklist.png",
   books: "mascot-books.png", laptop: "mascot-laptop.png", pencil: "mascot-pencil.png", sparkles: "sparkles.png", crown: "crown.png",
   iconTime: "icons/daily-reset.svg", iconQuestions: "icons/random-questions.svg", iconLesson: "icons/lesson.svg", iconDone: "icons/test-complete.svg",
+  iconCoin: "icons/coin.svg", iconTrainer: "icons/trainer.svg",
 };
 const RULE_ICONS = [ART.iconQuestions, ART.iconLesson, ART.iconDone];
+const PERK_ICONS = [ART.iconLesson, ART.iconCoin, ART.iconTrainer];
+// Har bir yosh uchun o‘z animatsiyasi: kichiklarda o‘ynoqi sakrash, o‘rtadagilarda yengil suzish, kattalarda deyarli sezilmas nafas.
+const moodOf = (grade) => (!grade ? "hello" : grade <= 2 ? "play" : grade <= 4 ? "hop" : grade <= 8 ? "glide" : "calm");
 const GRADE_GROUPS = [[1, 4], [5, 9], [10, 11]];
 // Murakkab javoblar uchun belgilar tugmalari (barchasi bir xil o‘lchamda): minus, kasr chizig‘i, nuqta, vergul.
 const NUMBER_KEYS = [["−", "minus"], ["/", "slash"], [".", "dot"], [",", "comma"]];
@@ -853,6 +878,24 @@ const CSS = `
 .mp-rules li{display:flex;align-items:center;gap:14px;padding:clamp(6px,1.6vh,16px) 20px clamp(6px,1.6vh,16px) 8px;border-radius:999px;background:rgba(255,255,255,.17);font-size:clamp(13px,2.5cqw,25px);font-weight:700;line-height:1.25}
 .mp-rules li i{flex:none;display:grid;place-items:center;width:clamp(30px,6.4cqw,56px);aspect-ratio:1;border-radius:50%;background:#fff}
 .mp-rules li i img{width:58%;height:58%}
+.mp-perks{display:grid;gap:clamp(8px,1.8vh,18px);margin:clamp(2px,1vh,10px) 0 0;padding:0;list-style:none;counter-reset:perk}
+.mp-perks li{position:relative;display:flex;align-items:center;gap:clamp(12px,1.6cqw,18px);padding:clamp(10px,1.8vh,18px) clamp(14px,2cqw,24px) clamp(10px,1.8vh,18px) clamp(10px,1.2cqw,14px);border-radius:24px;background:rgba(255,255,255,.17);animation:mp-perk .7s var(--d,0ms) cubic-bezier(.2,.9,.25,1) backwards}
+.mp-perks li::after{content:counter(perk);counter-increment:perk;position:absolute;top:50%;right:clamp(12px,1.8cqw,22px);transform:translateY(-50%);color:rgba(255,255,255,.28);font-size:clamp(28px,5.4cqw,54px);font-weight:900;letter-spacing:-.06em;line-height:1;pointer-events:none}
+.mp-perks i{flex:none;display:grid;place-items:center;width:clamp(40px,7.2cqw,64px);aspect-ratio:1;border-radius:50%;background:#fff;box-shadow:0 8px 18px rgba(120,40,0,.18);animation:mp-pop .6s calc(var(--d,0ms) + 220ms) cubic-bezier(.2,.9,.25,1) backwards}
+.mp-perks i img{width:56%;height:56%}
+.mp-perks div{display:flex;flex-direction:column;gap:clamp(2px,.5vh,5px);min-width:0;padding-right:clamp(22px,4.6cqw,48px)}
+.mp-perks b{font-size:clamp(16px,2.9cqw,27px);font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.mp-perks span{color:rgba(255,255,255,.92);font-size:clamp(13px,2.1cqw,19px);font-weight:500;line-height:1.4;text-wrap:pretty}
+.mp-perkstats .mp-stat{animation:mp-perk .7s var(--d,0ms) cubic-bezier(.2,.9,.25,1) backwards}
+.mp-perkstats .mp-stat b{font-size:clamp(14px,2.3vh,19px);letter-spacing:-.02em;overflow-wrap:anywhere}
+.mp-perkstats .mp-stat span{overflow:hidden;text-overflow:ellipsis}
+.mp-hero[data-mood=play] .mp-mascot-img{animation:mp-wiggle 2.4s ease-in-out infinite}
+.mp-hero[data-mood=hop] .mp-mascot-img{animation:mp-hop 1.9s cubic-bezier(.3,.7,.4,1) infinite}
+.mp-hero[data-mood=glide] .mp-mascot-img{animation:mp-bounce 4.4s ease-in-out infinite}
+.mp-hero[data-mood=calm] .mp-mascot-img{animation:mp-breathe 5.2s ease-in-out infinite}
+.mp-hero[data-mood=play] .mp-spark{animation-duration:1.6s}
+.mp-hero[data-mood=calm] .mp-spark{animation-duration:5s}
+.mp-hero[data-mood=calm] .mp-perks li{animation-name:mp-calm}
 .mp-hero-foot{margin-top:auto;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;min-width:0}
 .mp-hero-foot .mp-mascot-img{height:clamp(90px,min(27vh,25cqw),250px)}
 .mp-setup{display:flex;flex-direction:column;justify-content:center;gap:clamp(12px,2.4vh,26px);min-height:0;padding:clamp(18px,3.4vh,48px) clamp(18px,2.8vw,48px)}
@@ -1012,6 +1055,10 @@ const CSS = `
 .mp-count--calm.is-leaving{animation:mp-fadeout .4s ease forwards}
 .mp-root[data-tone=senior] .mp-decor,.mp-root[data-tone=senior] .mp-spark{display:none}
 .mp-notest h1{max-width:18ch}
+@keyframes mp-perk{from{opacity:0;transform:translateX(-28px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes mp-wiggle{0%,100%{transform:translateY(0) rotate(0)}20%{transform:translateY(-12px) rotate(-5deg)}40%{transform:translateY(0) rotate(4deg)}60%{transform:translateY(-6px) rotate(-3deg)}80%{transform:translateY(0) rotate(2deg)}}
+@keyframes mp-hop{0%,55%,100%{transform:translateY(0) scale(1,1)}10%{transform:translateY(0) scale(1.05,.94)}30%{transform:translateY(-20px) scale(.97,1.04)}45%{transform:translateY(0) scale(1.04,.95)}}
+@keyframes mp-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.025) translateY(-3px)}}
 @keyframes mp-calm{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @keyframes mp-fadeout{to{opacity:0}}
 @keyframes mp-grow{from{transform:scaleX(0)}}
@@ -1082,6 +1129,11 @@ const CSS = `
   .mp-tile{min-height:clamp(44px,6.2vh,58px)}
 }
 @media (max-width:860px) and (min-height:1100px){.mp-rules{display:grid}}
+@media (max-width:860px){.mp-perks{gap:6px;margin:0}.mp-perks span,.mp-perks li::after{display:none}.mp-perks li{padding:5px 14px 5px 5px;border-radius:999px}.mp-perks i{width:34px}.mp-perks div{padding:0}.mp-perks b{font-size:clamp(13px,3.8vw,16px);line-height:1.2}}
+@media (max-width:860px) and (min-height:900px){.mp-perks li{padding:8px 16px 8px 8px}.mp-perks i{width:42px}.mp-perks div{gap:2px}.mp-perks span{display:block;font-size:13px}.mp-perks b{font-size:16px}}
+@media (max-width:860px){.mp-perkstats,.mp-setup.is-free .mp-sub{display:none}}
+@media (max-width:860px) and (max-height:699px){.mp-perks{display:none}}
+@media (min-width:861px) and (max-height:700px){.mp-perks span{display:none}.mp-perks li{padding:8px 16px 8px 8px}.mp-perks li::after{font-size:28px}}
 @media (max-width:860px) and (max-height:899px){.mp-orange--result .mp-mascot-img,.mp-setup .mp-glabel{display:none}}
 @media (max-width:860px) and (max-height:700px){.mp-orange{padding:10px 14px;gap:8px}.mp-setup{gap:8px;padding:12px 14px}.mp-setup .mp-sub,.mp-setup .mp-glabel,.mp-setup-deco{display:none}.mp-groups{gap:6px}.mp-stat{padding:6px 10px}.mp-hero-foot .mp-mascot-img{height:54px}.mp-tile{min-height:42px}.mp-locked{padding:8px 16px}.mp-locked b{font-size:34px}}
 @media (min-width:861px) and (max-height:700px){.mp-setup .mp-glabel,.mp-setup-deco{display:none}.mp-groups{gap:6px}.mp-setup{gap:10px}.mp-stat{padding:6px 12px}}
@@ -1278,11 +1330,19 @@ function IntroScreen({ ui, name, grade, lockedGrade, onPick, onStart, onHome }) 
   return (
     <div className="mp-stage">
       <div className="mp-intro">
-        <section className="mp-orange mp-hero">
+        <section className="mp-orange mp-hero" data-mood={moodOf(grade)}>
           <button type="button" className="mp-glass" onClick={onHome}>← {ui.back}</button>
           <div className="mp-hero-copy">
             <p className="mp-eyebrow mp-eyebrow--light mp-rise" style={{ "--d": "0ms" }}>{ui.hello(name)}</p>
-            <h1 className="mp-rise" style={{ "--d": "90ms" }}>{ui.introTitle}</h1>
+            <h1 key={noTest ? "free" : "test"} className="mp-rise" style={{ "--d": "90ms" }}>{noTest ? ui.noTestIntroTitle : ui.introTitle}</h1>
+            {noTest && <ol className="mp-perks">
+              {ui.perks.map((perk, index) => (
+                <li key={perk.title} style={{ "--d": `${450 + index * 750}ms` }}>
+                  <i><Pic name={PERK_ICONS[index]} /></i>
+                  <div><b>{perk.title}</b><span>{perk.text}</span></div>
+                </li>
+              ))}
+            </ol>}
             {!noTest && <ol className="mp-rules">
               {ui.rules.map((rule, index) => (
                 <li key={rule} className="mp-rise" style={{ "--d": `${240 + index * 150}ms` }}>
@@ -1301,7 +1361,7 @@ function IntroScreen({ ui, name, grade, lockedGrade, onPick, onStart, onHome }) 
             <Pic name={ART.waving} className="mp-mascot-img" fallback={<MascotFallback />} />
           </div>
         </section>
-        <section className="mp-card mp-setup">
+        <section className={`mp-card mp-setup ${noTest ? "is-free" : ""}`}>
           <Pic name={ART.books} className="mp-setup-deco" />
           <div className="mp-setup-head">
             <p className="mp-eyebrow mp-rise" style={{ "--d": "0ms" }}>{ui.yourGrade}</p>
@@ -1329,7 +1389,18 @@ function IntroScreen({ ui, name, grade, lockedGrade, onPick, onStart, onHome }) 
             </div>
           )}
           {noTest ? (
-            <div className="mp-notice" aria-live="polite"><Pic name={ART.iconDone} /><span>{ui.noTestHint}</span></div>
+            <>
+              <div className="mp-notice" aria-live="polite"><Pic name={ART.iconDone} /><span>{ui.noTestHint}</span></div>
+              <div className="mp-stats is-ready mp-perkstats">
+                {ui.perkStats.map(([label, value], index) => (
+                  <div key={label} className="mp-stat" style={{ "--d": `${900 + index * 750}ms` }}>
+                    <Pic name={PERK_ICONS[index]} />
+                    <span>{label}</span>
+                    <b>{value}</b>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : (
           <div className={`mp-stats ${plan ? "is-ready" : ""}`} aria-live="polite">
             <div className="mp-stat">

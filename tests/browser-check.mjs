@@ -278,7 +278,7 @@ try {
   // 1-sinf: savol yo‘q, do‘stona oyna
   await open('?lang=uz&grade=1');
   check('1-sinf: qoidalar ro‘yxati va statistika yo‘q, do‘stona izoh va “Darslarni boshlash” bor',
-    await evaluate(`!document.querySelector('.mp-rules') && !document.querySelector('.mp-stats') && !!document.querySelector('.mp-notice') && document.querySelector('.mp-setup .mp-btn--block').textContent.includes('Darslarni boshlash')`));
+    await evaluate(`!document.querySelector('.mp-rules') && document.querySelectorAll('.mp-perks li').length === 3 && !document.querySelector('.mp-stats:not(.mp-perkstats)') && !!document.querySelector('.mp-notice') && document.querySelector('.mp-setup .mp-btn--block').textContent.includes('Darslarni boshlash')`));
   await click('.mp-setup .mp-btn--block');
   await waitFor(`!!document.querySelector('.mp-notest')`, '1-sinf oynasi');
   await openLog();
