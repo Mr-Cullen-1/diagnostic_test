@@ -12,7 +12,7 @@ Manba o‘zgarsa, `npm run build:lms` bilan LMS faylini yangilang (test eskirgan
 
 ## Mantiq
 
-O‘quvchi sinfi → ochiladigan modul va savollar manbai:
+O‘quvchi sinfi → sizga mos (ochiladigan) sinf va savollar manbai:
 
 | O‘quvchi sinfi | Ochiladigan sinf | Savollar qaysi sinfdan | Savollar soni |
 |---|---|---|---|

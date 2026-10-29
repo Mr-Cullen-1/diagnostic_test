@@ -35,13 +35,16 @@ const fitJs = `(() => { const s=document.querySelector('.mp-stage'); const r=doc
   const q=[...document.querySelectorAll('.mp-qcard,.mp-focus,.mp-intro,.mp-resultgrid,.mp-orange,.mp-setup,.mp-resultbody')].map(e=>({c:e.className.split(' ')[0],over:e.scrollHeight-e.clientHeight})).filter(x=>x.over>1);
   const blocks=['.mp-rhead','.mp-resultbody > .mp-glabel','.mp-topics','.mp-actions'].map(q=>document.querySelector(q)).filter((e)=>e && e.getClientRects().length).map(e=>e.getBoundingClientRect()); let overlap=false; for(let i=1;i<blocks.length;i+=1){ if(blocks[i].top < blocks[i-1].bottom - 1) overlap=true; }
   const act=document.querySelector('.mp-actions .mp-btn:last-child'); const actionVisible = act ? act.getBoundingClientRect().bottom <= innerHeight + 1 && act.getBoundingClientRect().top >= 0 : null;
-  return { overlap, actionVisible, stageOver: s.scrollHeight - s.clientHeight, rootH: r.clientHeight, vw: innerWidth, hOver: document.documentElement.scrollWidth - innerWidth, inner: q }; })()`;
+  const clipped = [...document.querySelectorAll('.mp-btn')].some((b) => { const br = b.getBoundingClientRect(); if (!br.width) return false; const rg = document.createRange(); rg.selectNodeContents(b); const tr = rg.getBoundingClientRect(); return tr.width > 0 && (tr.left < br.left - 1 || tr.right > br.right + 1); });
+  const wide = s.scrollWidth > s.clientWidth + 1;
+  const qc = document.querySelector('.mp-qcard'); const cardOut = qc ? qc.getBoundingClientRect().right > innerWidth + 1 : false;
+  return { clipped, wide, cardOut, overlap, actionVisible, stageOver: s.scrollHeight - s.clientHeight, rootH: r.clientHeight, vw: innerWidth, hOver: document.documentElement.scrollWidth - innerWidth, inner: q }; })()`;
 
 const results = [];
 const measure = async (label) => {
   const m = await ev(fitJs);
   const phoneResult = /natija$/.test(label) && m && m.vw <= 860;
-  const ok = phoneResult ? m.hOver <= 0 && m.actionVisible === true && m.overlap === false : m && m.stageOver <= 1 && m.hOver <= 0 && m.inner.length === 0;
+  const ok = phoneResult ? m.hOver <= 0 && m.actionVisible === true && m.overlap === false && !m.clipped && !m.wide && !m.cardOut : m && m.stageOver <= 1 && m.hOver <= 0 && m.inner.length === 0 && !m.clipped && !m.wide && !m.cardOut;
   results.push({ label, ok, m });
   console.log(`${ok ? '✔' : '✖'} ${label}${ok ? '' : '  ' + JSON.stringify(m)}`);
 };

@@ -21,7 +21,7 @@
  *              answeredCount, totalQuestions, score, levelStats, skillStats,
  *              completionType, flags, responses  (+ matematikaga xos qo‘shimcha kalitlar)
  *
- * Mantiq (1–11-sinf): ochiladigan modul — o‘z sinfidan bitta past (kamida 1); hammasiga to‘g‘ri javob bersa
+ * Mantiq (1–11-sinf): ochiladigan sinf — o‘z sinfidan bitta past (kamida 1); hammasiga to‘g‘ri javob bersa
  * o‘z sinfi. Savollar: 1–4-sinf uchun 1–2-sinfdan, 5–11-sinf uchun faqat bitta pastdagi sinfdan (8 → 7).
  * 6–10 ta qisqa savol; maqsad — aniqlik emas, baza bor-yo‘qligini ko‘rish.
  */
@@ -446,7 +446,7 @@ const CONTENT = {
     statGrade: "Sinf",
     timeUnit: "daq.",
     pickHint: "Savollar sinfingizga moslab tanlanadi",
-    rules: ["Har bir savolga qisqa javob bering", "Bilmasangiz — “Bilmayman” ni bosing", "Oxirida sizga mos modul ochiladi"],
+    rules: ["Har bir savolga qisqa javob bering", "Bilmasangiz — “Bilmayman” ni bosing", "Oxirida sizga mos sinf ochiladi"],
     introTitle: "Matematika bo‘yicha qisqa tekshiruv",
     introSub: (count, grade) => `${grade}-sinf uchun ${count} ta qisqa savol — taxminan 3 daqiqa.`,
     introNote: "Bu imtihon emas: bilim bazasi bor-yo‘qligini ko‘ramiz. Bilmagan savolda “Bilmayman” ni bosing.",
@@ -468,13 +468,13 @@ const CONTENT = {
     seeResult: "Natijani ko‘rish",
     exit: "Testni to‘xtatish",
     exitTitle: "Testni to‘xtatasizmi?",
-    exitText: "Hozir to‘xtatsangiz, modul tavsiya etilmaydi.",
+    exitText: "Hozir to‘xtatsangiz, sizga mos sinf aniqlanmaydi.",
     keep: "Davom etaman",
     confirmExit: "To‘xtatish",
     resultEyebrow: "Natija tayyor",
     resultTitle: (name) => `${name}, ajoyib ish!`,
     scoreLabel: "To‘g‘ri javoblar",
-    openTitle: "Siz uchun ochiladigan modul",
+    openTitle: "Sizga mos sinf",
     openGrade: (n) => `${n}-sinf`,
     openNote: "Qiyin sinfdan emas, takrorlash uchun qulay joydan boshlaymiz.",
     openNotePerfect: "Hammasiga to‘g‘ri javob berdingiz — o‘z sinfingizdan boshlaysiz!",
@@ -483,7 +483,7 @@ const CONTENT = {
     baseNote: {
       strong: "Mavzularning ko‘pchiligini bilasiz — takrorlash tez o‘tadi.",
       partial: "Ba’zi mavzular yaxshi, ba’zilari takrorlashni talab qiladi.",
-      weak: "Bu normal: modul aynan shu asoslardan boshlanadi.",
+      weak: "Bu normal: o‘qish aynan shu asoslardan boshlanadi.",
     },
     topicsTitle: "Mavzular bo‘yicha",
     status: { know: "Biladi", partial: "Qisman", unknown: "Bilmaydi" },
@@ -491,7 +491,7 @@ const CONTENT = {
     finish: "Yakunlash",
     incompleteEyebrow: "Test tugallanmadi",
     incompleteTitle: "Daraja aniqlanmadi",
-    incompleteText: "Modul tavsiyasi uchun barcha savollarga javob berish kerak.",
+    incompleteText: "Sizga mos sinfni aniqlash uchun barcha savollarga javob berish kerak.",
     incompleteProgress: (done, total) => `Javob berilgan: ${done} / ${total}`,
     domains: {
       number: "Sonlar", operations: "Amallar", fractions: "Kasrlar", problems: "Masalalar",
@@ -513,7 +513,7 @@ const CONTENT = {
     statGrade: "Класс",
     timeUnit: "мин",
     pickHint: "Вопросы подберутся под твой класс",
-    rules: ["Отвечай коротко на каждый вопрос", "Не знаешь — нажми «Не знаю»", "В конце откроется подходящий модуль"],
+    rules: ["Отвечай коротко на каждый вопрос", "Не знаешь — нажми «Не знаю»", "В конце откроется подходящий тебе класс"],
     introTitle: "Короткая проверка по математике",
     introSub: (count, grade) => `${count} коротких вопросов для ${grade} класса — примерно 3 минуты.`,
     introNote: "Это не экзамен: мы смотрим, есть ли база. Если не знаешь ответ — нажми «Не знаю».",
@@ -535,13 +535,13 @@ const CONTENT = {
     seeResult: "Смотреть результат",
     exit: "Остановить тест",
     exitTitle: "Остановить тест?",
-    exitText: "Если остановить сейчас, модуль рекомендован не будет.",
+    exitText: "Если остановить сейчас, подходящий класс определён не будет.",
     keep: "Продолжить",
     confirmExit: "Остановить",
     resultEyebrow: "Результат готов",
     resultTitle: (name) => `${name}, отличная работа!`,
     scoreLabel: "Верных ответов",
-    openTitle: "Тебе открывается модуль",
+    openTitle: "Подходящий тебе класс",
     openGrade: (n) => `${n} класс`,
     openNote: "Начнём не со сложного, а с удобного места для повторения.",
     openNotePerfect: "Все ответы верные — начинаешь со своего класса!",
@@ -550,7 +550,7 @@ const CONTENT = {
     baseNote: {
       strong: "Большинство тем ты знаешь — повторение пройдёт быстро.",
       partial: "Одни темы хорошо, другие стоит повторить.",
-      weak: "Это нормально: модуль начнётся именно с этих основ.",
+      weak: "Это нормально: обучение начнётся именно с этих основ.",
     },
     topicsTitle: "По темам",
     status: { know: "Знает", partial: "Частично", unknown: "Не знает" },
@@ -580,7 +580,7 @@ const CONTENT = {
     statGrade: "Grade",
     timeUnit: "min",
     pickHint: "Questions are matched to your grade",
-    rules: ["Give a short answer to each question", "Not sure? Tap “I do not know”", "At the end, the right module opens for you"],
+    rules: ["Give a short answer to each question", "Not sure? Tap “I do not know”", "At the end, the grade that suits you opens"],
     introTitle: "A quick maths check",
     introSub: (count, grade) => `${count} short questions for grade ${grade} — about 3 minutes.`,
     introNote: "This is not an exam: we just check whether the basics are there. If you do not know, tap “I do not know”.",
@@ -602,13 +602,13 @@ const CONTENT = {
     seeResult: "See the result",
     exit: "Stop the test",
     exitTitle: "Stop the test?",
-    exitText: "If you stop now, no module will be recommended.",
+    exitText: "If you stop now, no suitable grade will be determined.",
     keep: "Keep going",
     confirmExit: "Stop",
     resultEyebrow: "Result is ready",
     resultTitle: (name) => `${name}, great job!`,
     scoreLabel: "Correct answers",
-    openTitle: "Your module opens at",
+    openTitle: "The grade that suits you",
     openGrade: (n) => `Grade ${n}`,
     openNote: "We start from a comfortable place to review, not from a hard grade.",
     openNotePerfect: "Every answer is correct — you start at your own grade!",
@@ -617,7 +617,7 @@ const CONTENT = {
     baseNote: {
       strong: "You know most topics — the review will go fast.",
       partial: "Some topics are solid, others need a review.",
-      weak: "That is fine: the module starts exactly with these basics.",
+      weak: "That is fine: learning starts exactly with these basics.",
     },
     topicsTitle: "By topic",
     status: { know: "Knows", partial: "Partly", unknown: "Does not know" },
@@ -644,7 +644,7 @@ const REACTION_MS = { ok: 1100, bad: 2300, skip: 2300 };
 const INLINE_ART = {};
 const ART = {
   waving: "mascot-waving.png", think: "mascot-think.png", thumbs: "mascot-thumbs.png", celebrate: "mascot-celebrate.png",
-  point: "mascot-point.png", reading: "mascot-reading.png", trophy: "mascot-trophy.png", checklist: "mascot-checklist.png",
+  point: "mascot-point.png", trophy: "mascot-trophy.png", checklist: "mascot-checklist.png",
   books: "mascot-books.png", laptop: "mascot-laptop.png", pencil: "mascot-pencil.png", sparkles: "sparkles.png", crown: "crown.png",
   iconTime: "icons/daily-reset.svg", iconQuestions: "icons/random-questions.svg", iconLesson: "icons/lesson.svg", iconDone: "icons/test-complete.svg",
 };
@@ -715,7 +715,7 @@ const CSS = `
 .mp-root img{display:block;max-width:100%;user-select:none;-webkit-user-drag:none}
 .mp-decor{position:absolute;inset:0;overflow:hidden;pointer-events:none}
 .mp-decor img{position:absolute;height:auto;opacity:.92;filter:drop-shadow(0 12px 16px rgba(63,39,27,.16));animation:mp-float 9s ease-in-out infinite}
-.mp-stage{position:relative;z-index:1;flex:1;min-width:0;min-height:0;display:grid;grid-template-rows:minmax(0,1fr);width:100%;max-width:1780px;margin:0 auto;padding:clamp(10px,2.2vh,28px) clamp(12px,2.6vw,48px);overflow:auto;animation:mp-screen .6s cubic-bezier(.2,.9,.25,1) backwards}
+.mp-stage{position:relative;z-index:1;flex:1;min-width:0;min-height:0;display:grid;grid-template-rows:minmax(0,1fr);width:100%;max-width:1780px;margin:0 auto;padding:clamp(10px,2.2vh,28px) clamp(12px,2.6vw,48px);overflow:auto;grid-template-columns:minmax(0,1fr);animation:mp-screen .6s cubic-bezier(.2,.9,.25,1) backwards}
 .mp-card{background:#fff;border:1px solid rgba(225,225,225,.7);border-radius:28px;box-shadow:var(--shadow)}
 .mp-label{display:block;color:var(--muted);font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
 .mp-eyebrow{margin:0;color:var(--accent);font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
@@ -819,10 +819,11 @@ const CSS = `
 .mp-input.is-bad{border-color:var(--bad);background:#fef2f2;color:#b91c1c}
 .mp-error{margin:8px 0 0;color:var(--bad);font-size:14px;font-weight:700}
 .mp-qside{display:grid;place-items:center;min-height:0;min-width:0}
-.mp-qside img,.mp-qside .mp-mascot{height:min(100%,clamp(150px,38vh,290px));width:auto;max-width:100%;object-fit:contain;filter:drop-shadow(0 12px 16px rgba(63,39,27,.18));animation:mp-pop .5s both}
-.mp-qbar{position:relative;grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:clamp(58px,9vh,76px);margin-top:clamp(8px,1.6vh,18px);padding-top:clamp(10px,1.8vh,16px);border-top:1px solid #f1e7e2}
+.mp-qside img,.mp-qside .mp-mascot{box-sizing:border-box;padding:6px;height:min(100%,clamp(150px,38vh,290px));width:auto;max-width:100%;object-fit:contain;filter:drop-shadow(0 12px 16px rgba(63,39,27,.18));animation:mp-pop .5s both}
+.mp-qbar{position:relative;grid-column:1/-1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 12px;min-height:clamp(58px,9vh,76px);margin-top:clamp(8px,1.6vh,18px);padding-top:clamp(10px,1.8vh,16px);border-top:1px solid #f1e7e2}
+.mp-qbar > .mp-btn{flex:0 0 auto;max-width:100%;margin-left:auto}
 .mp-barhint{color:var(--muted);font-size:14px;font-weight:700}
-.mp-fbtext{display:flex;align-items:center;gap:12px;min-width:0;font-size:clamp(13px,1.9vh,17px);line-height:1.3;animation:mp-rise .3s both}
+.mp-fbtext{flex:1 1 160px;display:flex;align-items:center;gap:12px;min-width:0;font-size:clamp(13px,1.9vh,17px);line-height:1.3;animation:mp-rise .3s both}
 .mp-fbtext i{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;color:#fff;font-style:normal;font-size:16px;font-weight:900}
 .mp-fbtext strong{display:block;font-size:clamp(16px,2.3vh,21px);font-weight:900;letter-spacing:-.02em}
 .mp-fbtext--ok{color:#047857}.mp-fbtext--ok i{background:var(--ok)}
@@ -924,7 +925,7 @@ const CSS = `
   .mp-stat img{display:none}
   .mp-tile{min-height:clamp(46px,7.5vh,64px);border-radius:16px}
   .mp-focus{max-width:none}
-  .mp-qcard{grid-template-columns:1fr;padding:16px 16px 12px;border-radius:24px}
+  .mp-qcard{grid-template-columns:minmax(0,1fr);padding:16px 16px 12px;border-radius:24px}
   .mp-qside{display:none}
   .mp-root .mp-minimasc{display:block}
   .mp-qmain{justify-content:flex-start;gap:clamp(12px,2.4vh,22px)}
@@ -961,8 +962,8 @@ const CSS = `
 @media (max-width:860px) and (max-height:899px){.mp-orange--result .mp-mascot-img,.mp-setup .mp-glabel{display:none}}
 @media (max-width:860px) and (max-height:700px){.mp-orange{padding:10px 14px;gap:8px}.mp-setup{gap:8px;padding:12px 14px}.mp-setup .mp-sub,.mp-setup .mp-glabel,.mp-setup-deco{display:none}.mp-groups{gap:6px}.mp-stat{padding:6px 10px}.mp-hero-foot .mp-mascot-img{height:54px}.mp-tile{min-height:42px}.mp-locked{padding:8px 16px}.mp-locked b{font-size:34px}}
 @media (min-width:861px) and (max-height:700px){.mp-setup .mp-glabel,.mp-setup-deco{display:none}.mp-groups{gap:6px}.mp-setup{gap:10px}.mp-stat{padding:6px 12px}}
-/* Telefonda mavzular bo‘yicha katakchalar ko‘rsatilmaydi: faqat ball, ochiladigan sinf va bilim bazasi. */
-@media (max-width:600px){.mp-resultbody > .mp-glabel,.mp-topics{display:none}.mp-resultbody{gap:16px}}
+/* Telefonda mavzular bo‘yicha katakchalar faqat joy yetarli bo‘lsa (balandlik ≥ 760px) ko‘rsatiladi. */
+@media (max-width:600px) and (max-height:759px){.mp-resultbody > .mp-glabel,.mp-topics{display:none}.mp-resultbody{gap:16px}}
 @media (prefers-reduced-motion:reduce){.mp-root *,.mp-root *::before,.mp-root *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 `;
 
@@ -1233,7 +1234,7 @@ function QuestionCard({ item, ui, lang, seed, index, total, reaction, onAnswer, 
   const order = useMemo(() => (item.type === "choice" ? seededShuffle(item.options.map((_, i) => i), seed, `opts-${item.id}`) : []), [item, seed]);
   const messageIndex = hashString(`${seed}:${item.id}`);
   const message = state === "ok" ? ui.correct[messageIndex % ui.correct.length] : state === "bad" ? ui.wrong[messageIndex % ui.wrong.length] : ui.skipped;
-  const pose = state === "ok" ? (messageIndex % 2 ? ART.thumbs : ART.celebrate) : state === "bad" ? ART.point : state === "skip" ? ART.reading : ART.think;
+  const pose = state === "ok" ? (messageIndex % 2 ? ART.thumbs : ART.celebrate) : state === "bad" ? ART.point : state === "skip" ? ART.laptop : ART.think;
   const isLast = index === total - 1;
   const isChoice = item.type === "choice";
   const submitNumber = () => {
@@ -1389,7 +1390,7 @@ function IncompleteScreen({ ui, incomplete, onRetake, onHome }) {
   return (
     <div className="mp-stage">
       <section className="mp-card mp-incomplete">
-        <Pic name={ART.reading} fallback={<MascotFallback />} />
+        <Pic name={ART.laptop} fallback={<MascotFallback />} />
         <p className="mp-eyebrow">{ui.incompleteEyebrow}</p>
         <h1>{ui.incompleteTitle}</h1>
         <p>{ui.incompleteText}</p>
