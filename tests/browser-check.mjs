@@ -16,7 +16,7 @@ mkdirSync(SHOTS, { recursive: true });
 
 const source = readFileSync(new URL('../app/math-placement.jsx', import.meta.url), 'utf8');
 const logic = source.slice(source.indexOf('// <logic>'), source.indexOf('// </logic>'));
-const { MATH_ITEMS } = runInNewContext(`${logic}; ({ MATH_ITEMS })`);
+const { MATH_ITEMS, questionSpeech, answerSpeech } = runInNewContext(`${logic}; ({ MATH_ITEMS, questionSpeech, answerSpeech })`);
 
 const results = [];
 const check = (name, ok, detail = '') => {
@@ -122,14 +122,23 @@ const openLog = async () => {
 };
 const readCompleteJson = async () => JSON.parse(await evaluate(`(() => { const t = document.querySelector('.lms-panel pre').textContent; return t.includes('{') ? t : 'null'; })()`));
 const eventKinds = async () => evaluate(`[...document.querySelectorAll('.lms-panel li')].map((li) => {
-  const kind = li.textContent.match(/(onProgress|onComplete)/)[1];
-  return kind === 'onComplete' ? 'onComplete:' : kind + ':' + ((li.textContent.match(/"status":"(\\w+)"/) || [])[1] ?? '');
+  const kind = li.textContent.match(/(onProgress|onComplete|onFinished)/)[1];
+  return kind === 'onComplete' || kind === 'onFinished' ? kind + ':' : kind + ':' + ((li.textContent.match(/"status":"(\\w+)"/) || [])[1] ?? '');
 })`);
 
 try {
   // ── A. 9-sinf, ru, mobil: to‘liq oqim ──
   await viewport(390, 844, true);
   await send('Page.enable');
+  // Ovozni tekshirish uchun brauzer nutqini almashtiramiz: aytilgan gaplar window.__spoken ga yoziladi (ovoz chiqmaydi).
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+    window.__spoken = [];
+    window.SpeechSynthesisUtterance = function (text) { this.text = text; };
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
+      getVoices: () => [], cancel() {},
+      speak(utterance) { window.__spoken.push(utterance.text); setTimeout(() => utterance.onend && utterance.onend({}), 30); },
+    } });
+  ` });
   await open('?lang=ru&grade=9');
   check('Anketa yo‘q: sahifa to‘g‘ridan-to‘g‘ri diagnostikani ko‘rsatadi', (await evaluate(`document.body.innerText`)).includes('математике'));
   check('Sinf LMS dan berilganda tanlash tugmalari ko‘rinmaydi', !(await evaluate(`!!document.querySelector('.mp-tiles')`)));
@@ -188,7 +197,7 @@ try {
     if (i < total - 1) await nextQuestion();
   }
   check('Har javobga to‘g‘ri reaksiya (to‘g‘ri/noto‘g‘ri/bilmayman)', allReactions);
-  check('KaTeX: savollarda ifodalar chizildi (window.katex + .katex elementlari)', sawKatex && (await evaluate(`typeof window.katex === 'object'`)), String(sawKatex));
+  check('KaTeX: savollarda ifodalar chizildi (.katex elementlari; sinov sahifasi katex ni prop sifatida beradi)', sawKatex, String(sawKatex));
   check('9-sinf savollari faqat 8-sinfdan', seenGrades.size === 1 && seenGrades.has(8), [...seenGrades].join());
   await click('.mp-qbar .mp-btn');
   await waitFor(`!!document.querySelector('.mp-ring')`, 'natija ekrani');
@@ -291,6 +300,12 @@ try {
   await viewport(1280, 800, false);
   await sleep(1500);
   await shot('D1-notest-desktop');
+  await click('.mp-notest .mp-btn');
+  await sleep(500);
+  await openLog();
+  check('1-sinf: “Darslarni boshlash” bosilganda LMS ga onFinished yuboriladi (lessonId, NO_TEST_REQUIRED)',
+    (await eventKinds()).filter((k) => k === 'onFinished:').length === 1
+    && await evaluate(`(() => { const t = document.querySelector('.lms-panel').textContent; return t.includes('"lessonId":"math-placement-v1"') && t.includes('NO_TEST_REQUIRED'); })()`));
   await send('Page.reload');
   await waitFor(`document.readyState==='complete' && !!document.querySelector('.mp-root')`, 'qayta yuklandi (1-sinf)');
   await sleep(900);
@@ -315,6 +330,42 @@ try {
   await sleep(1400);
   await shot('D3-result-perfect-desktop');
   check('Ingliz tilidagi savol matni', /[a-z]/i.test(englishQuestion) && !/[а-яё]/i.test(englishQuestion), englishQuestion);
+  // ── E. Ovoz: ochilish → savol → xato javob → qayta eshitish → o‘chirilganda jim; 1-sinf ──
+  await viewport(1280, 800, false);
+  await open('?lang=uz&grade=7');
+  await sleep(1500);
+  const introSpoken = await evaluate(`window.__spoken.slice()`);
+  check('Ovoz: ochilish ekrani sinf, savollar soni va “Bilmayman” haqida qisqa gapiradi',
+    introSpoken.length === 1 && introSpoken[0].includes('yetti sinf uchun sakkiz ta qisqa savol') && introSpoken[0].includes('Bilmayman'), JSON.stringify(introSpoken));
+  await startTest();
+  await sleep(1500);
+  const firstId = await evaluate(`document.querySelector('.mp-qcard')?.dataset.item`);
+  const firstItem = MATH_ITEMS.find((entry) => entry.id === firstId);
+  const spokenNow = () => evaluate(`window.__spoken.slice()`);
+  let spoken = await spokenNow();
+  check('Ovoz: savol matni (KaTeX ifodalari so‘z bilan) o‘qiladi', spoken.at(-1) === questionSpeech(firstItem, 'uz') && !/[$\\^{}0-9]/.test(spoken.at(-1)), spoken.at(-1));
+  const wrongAnswer = await answerQuestion('uz', 'wrong');
+  await sleep(1200);
+  spoken = await spokenNow();
+  check('Ovoz: xato javobdan keyin xabar va to‘g‘ri javob aytiladi',
+    spoken.at(-2)?.length > 0 && spoken.at(-1) === `To'g'ri javob: ${answerSpeech(wrongAnswer.item, 'uz')}`, JSON.stringify(spoken.slice(-2)));
+  const beforeListen = spoken.length;
+  await click('.mp-listen');
+  await sleep(1200);
+  spoken = await spokenNow();
+  check('Ovoz: “Eshitish” tugmasi gapni qayta o‘qiydi', spoken.length > beforeListen && spoken.at(-1).startsWith('To\'g\'ri javob'), JSON.stringify(spoken.slice(-2)));
+  await click('.mp-sound');
+  await nextQuestion();
+  const mutedCount = (await spokenNow()).length;
+  await sleep(1500);
+  check('Ovoz o‘chiq: yangi savol aytilmaydi', (await spokenNow()).length === mutedCount);
+  await click('.mp-listen');
+  await sleep(1000);
+  check('Ovoz o‘chiq bo‘lsa ham “Eshitish” bosilganda o‘qiydi', (await spokenNow()).length > mutedCount);
+  await open('?lang=uz&grade=1');
+  await sleep(2500);
+  spoken = await spokenNow();
+  check('Ovoz: 1-sinf (test yo‘q) — darslar ochiqligi aytiladi', spoken.length === 3 && spoken[0].includes('Darslar siz uchun ochiq') && spoken[1].includes('coin'), JSON.stringify(spoken));
 } catch (error) {
   check(`Skript xatosi: ${error.message}`, false, error.stack);
 } finally {

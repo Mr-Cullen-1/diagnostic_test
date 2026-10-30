@@ -38,7 +38,10 @@ O‘quvchi sinfi → savollar manbai → sizga mos (ochiladigan) sinf:
 - **Reaksiya:** to‘g‘ri javobdan keyin 1–2 soniyada o‘zi o‘tadi; xato va “Bilmayman”dan keyin o‘tmaydi — o‘quvchi to‘g‘ri javobni o‘qib, “Davom” ni bosadi.
 - **Vaqt savollar soniga qarab:** 6–8 ta savol ≈ 3 daqiqa, 10 ta savol ≈ 4 daqiqa (sinf tanlanmaguncha “≈ 3–4”).
 - **9–11-sinf — jiddiyroq uslub:** 3‑2‑1 sanoq o‘rniga qisqa to‘q fon va “Boshlaymiz”, konfetti, toj va 3D bezaklarsiz, ranglar o‘zgarmaydi, maskot xotirjam pozalarda.
-- **Ovoz:** yuqori o‘ng burchakda yoqish/o‘chirish tugmasi (standart — yoqiq, tanlov brauzerda saqlanadi).
+- **Ovoz:** yuqori o‘ng burchakda yoqish/o‘chirish tugmasi (standart — yoqiq, tanlov brauzerda saqlanadi). Tugma ham ovozli o‘qishni, ham signallarni boshqaradi.
+- **Ovozli o‘qish (dars fayllaridagi kabi, qisqa va aniq):** ochilish ekrani (sinf, savollar soni, “Bilmayman”), har bir savol matni, javobdan keyin qisqa xabar (xato/“Bilmayman”da to‘g‘ri javob ham), natija (ball, sizga mos sinf, izoh), 1-sinf va “tugallanmadi” ekrani. Variantlar o‘qilmaydi. Savol kartasidagi “Eshitish” tugmasi gapni qayta o‘qiydi (ovoz o‘chiq bo‘lsa ham). Yangi gap eskisini to‘xtatadi; to‘g‘ri javobdan keyin keyingi savolga o‘tilsa gap to‘xtaydi.
+  - Sonlar so‘z bilan aytiladi (uz/ru), amallar nomi bilan (“karra”, “qo‘shuv”, “bo‘lingan”), KaTeX ifodalari gapga aylanadi: kasr (“ikkidan bir”), o‘nli kasr, ildiz, daraja, logarifm, indeks, modul, trigonometriya, `x` → “iks”. Ruscha oddiy matnda butun sonlar raqam bo‘lib qoladi (ovoz kelishikni o‘zi to‘g‘ri aytadi). O‘zbekcha qisqartmalar (sm, km, m…) to‘liq so‘z bo‘ladi.
+  - Manba: `ttsApiBase` berilsa `GET {ttsApiBase}/api/tts?text=[til belgisi] …&g=m` (dars fayllaridagi bilan bir xil server), bo‘lmasa brauzer `speechSynthesis`. Brauzer birinchi bosishgacha ovozni bloklasa, birinchi bosish/tugmadan keyin davom etadi.
 - Faqat qisqa savol va qisqa javob (son yoki 4 variantli tanlov). Maqsad aniqlik emas — baza bor-yo‘qligini ko‘rish.
 - Natija: to‘g‘ri javoblar, baza darajasi (`strong` ≥70%, `partial` ≥40%, `weak`), mavzular bo‘yicha “biladi / qisman / bilmaydi” (mavzuga 1–3 savol to‘g‘ri keladi, shuning uchun “qisman” faqat 2+ savolli mavzuda bo‘ladi).
 - Savollar sinf o‘sish tartibida, mavzular xilma-xil, urug‘ (`attemptSeed`) bo‘yicha aniq takrorlanadi.
@@ -54,10 +57,12 @@ O‘quvchi sinfi → savollar manbai → sizga mos (ochiladigan) sinf:
   attemptSeed={undefined}   // ixtiyoriy
   itemBank={undefined}      // ixtiyoriy, standart — ichki 93 ta savol
   assetBase="/art"          // rasmlar manzili (standart "/art")
-  katex={undefined}         // ixtiyoriy: KaTeX nusxasi; bo‘lmasa window.katex yoki CDN (katexBase)
+  katex={undefined}         // ixtiyoriy: KaTeX nusxasi; bo‘lmasa window.katex, u ham bo‘lmasa katexBase (ixtiyoriy manzil), u ham bo‘lmasa oddiy matn
+  ttsApiBase="https://…"    // ixtiyoriy: ovoz serveri (dars fayllaridagi ttsApiBase); bo‘lmasa brauzer ovozi
   onHome={() => {}}
   onProgress={(e) => {}}    // { status: "in_progress"|"complete"|"incomplete", answeredCount, responses, phase, response?, reasonCode? }
   onComplete={(result) => {}} // natija ekrani chiqqanda BIR marta; erta chiqishda chaqirilmaydi; 1-sinfda test o‘rniga tayyor natija
+  onFinished={(payload) => {}} // “Yakunlash” / “Darslarni boshlash” bosilganda BIR marta: { lessonId, lessonTitle, durationSec, ...result }; ✕ dan keyin completionType: "INCOMPLETE"
 />
 ```
 
@@ -78,8 +83,8 @@ Komponent faqat brauzerda ishlaydi (`localStorage`, `window`): serverda render q
 
 Savollarda ifodalar `$…$` ichida yoziladi (masalan `$\dfrac{3}{4} \cdot \dfrac{2}{3}$`) va KaTeX bilan chiziladi: kasrlar, darajalar, ildizlar, indekslar, logarifm va hokazo. Savol matnidagi so‘zlar birin-ketin paydo bo‘ladi, ifodalar esa rangli “tabletka” ichida sakrab chiqadi.
 
-KaTeX manbasi (ustuvorlik tartibida): `katex` prop → `window.katex` → pinlangan CDN (`katexBase`, standart `https://cdn.jsdelivr.net/npm/katex@0.19.1/dist`, SRI hash bilan). Hech biri bo‘lmasa ifodalar oddiy Unicode matn bo‘lib chiqadi (3/4, x², √18) va test to‘xtamaydi.
-LMS CDN ga chiqa olmasa: KaTeX ni o‘zingiz xosting qilib `katexBase` bering yoki `window.katex` ni oldindan yuklang. Yangi savol yozilganda `npm test` hamma ifodani KaTeX bilan qat’iy rejimda tekshiradi.
+KaTeX manbasi (ustuvorlik tartibida): `katex` prop → `window.katex` → `katexBase` (ixtiyoriy, masalan `https://cdn.jsdelivr.net/npm/katex@0.19.1/dist` — shu versiyaga SRI hash qo‘yiladi). **Standart holatda komponent hech qanday tashqi manzil yuklamaydi**; KaTeX bo‘lmasa ifodalar oddiy Unicode matn bo‘lib chiqadi (3/4, x², √18) va test to‘xtamaydi. Sinov sahifasi `katex` ni npm dan prop sifatida beradi.
+LMS da chiroyli formulalar kerak bo‘lsa: `katex` prop bering yoki sahifaga `window.katex` ni oldindan yuklang. Yangi savol yozilganda `npm test` hamma ifodani KaTeX bilan qat’iy rejimda tekshiradi.
 
 ## LMS uchun yagona fayl
 
@@ -87,7 +92,9 @@ LMS CDN ga chiqa olmasa: KaTeX ni o‘zingiz xosting qilib `katexBase` bering yo
 npm run build:lms     # → lms/math-placement.lms.jsx
 ```
 
-`public/art` dagi ishlatiladigan rasmlar data-URI qilib `INLINE_ART` ichiga joylanadi (≈550 KB). Natijaviy fayl faqat `react` ga tayanadi, rasm hostingi shart emas. Ifodalar uchun KaTeX yuqoridagi tartibda olinadi.
+`public/art` dagi ishlatiladigan rasmlar WebP ga o‘tkazilib data-URI qilib `INLINE_ART` ichiga joylanadi (≈350 KB; asl PNG lar tegilmaydi). Natijaviy fayl faqat `react` ga tayanadi, rasm hostingi shart emas.
+
+**LMS fayliga qo‘yilgan talablar** (ingliz tili diagnostikasi va Dars06 kabi xatosiz ishlayotgan fayllardan olingan; `tests/lms-compat.test.js` tekshiradi): bitta `export default` funksiya va boshqa eksport yo‘q; `"use client"` yo‘q; importlar faqat `react` (ruxsat etilganlar: react, framer-motion, lucide-react, @lesson/runtime); kodda tashqi manzil (http/https) yo‘q; CSS shablonida teskari chiziq, backtick, `${…}` va `@import` yo‘q (shrift Roboto xost sahifadan keladi); fayl hajmi ≤ 400 KB.
 Agar LMS rasmlarni o‘zi xosting qilsa, `app/math-placement.jsx` ni (≈90 KB) `assetBase` bilan ishlating.
 
 ## Ishga tushirish
@@ -98,7 +105,7 @@ npm run dev          # http://localhost:3000   (Node 22+)
 npm run build && npm start
 ```
 
-Mahalliy sinov sahifasi: `?lang=ru&grade=5` (sinf bermasangiz tanlash ekrani chiqadi), `?embed=1` — panelsiz. Yuqoridagi “Callback’lar” tugmasi `onProgress/onComplete` ma’lumotlarini ko‘rsatadi.
+Mahalliy sinov sahifasi: `?lang=ru&grade=5` (sinf bermasangiz tanlash ekrani chiqadi), `?embed=1` — panelsiz, `?tts=https://…` — ovoz serveri (`ttsApiBase`). Yuqoridagi “Callback’lar” tugmasi `onProgress/onComplete` ma’lumotlarini ko‘rsatadi.
 
 ## Tekshiruvlar
 

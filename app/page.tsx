@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 import MathPlacement from "./math-placement";
 
 type Lang = "uz" | "ru" | "en";
-type LogEntry = { at: string; kind: "onProgress" | "onComplete"; payload: unknown };
+type LogEntry = { at: string; kind: "onProgress" | "onComplete" | "onFinished"; payload: unknown };
 
 const LANGS: Lang[] = ["uz", "ru", "en"];
 const TOOLBAR_HEIGHT = 52;
@@ -41,9 +43,12 @@ export default function Home() {
       lang={lang}
       studentGrade={gradeValue ? Number(gradeValue) : undefined}
       storageKey={`math-placement-local-${attempt}`}
+      ttsApiBase={params.get("tts") ?? undefined}
       onHome={() => setAttempt((current) => current + 1)}
       onProgress={(payload: unknown) => push("onProgress", payload)}
       onComplete={(payload: unknown) => push("onComplete", payload)}
+      onFinished={(payload: unknown) => push("onFinished", payload)}
+      katex={katex}
     />
   );
 

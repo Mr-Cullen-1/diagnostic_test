@@ -7,5 +7,16 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="uz"><body>{children}</body></html>;
+  return (
+    <html lang="uz">
+      <head>
+        {/* Sinov sahifasi uchun shrift. LMS da Roboto xost sahifadan keladi (komponent o‘zi hech narsa yuklamaydi). */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800;900&display=swap" />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
 }

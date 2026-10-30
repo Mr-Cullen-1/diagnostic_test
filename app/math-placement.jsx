@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * Junior — matematika bo‘yicha kirish diagnostikasi (yagona JSX fayl).
  *
@@ -12,11 +10,14 @@
  *
  * LMS shartnomasi ingliz tili diagnostikasi bilan bir xil:
  *   props:     lang ("uz" | "ru" | "en"), studentGrade (1–11; bermasa o‘quvchi o‘zi tanlaydi),
- *              storageKey, attemptSeed, itemBank, assetBase, katex, katexBase, onHome, onProgress, onComplete
- *              (+ ixtiyoriy studentName). Ingliz tilidagi studentAge o‘rniga studentGrade.
+ *              storageKey, attemptSeed, itemBank, assetBase, katex, katexBase, onHome, onProgress, onComplete,
+ *              onFinished (+ ixtiyoriy studentName). Ingliz tilidagi studentAge o‘rniga studentGrade.
+ *              Ovozli o‘qish: ttsApiBase (dars fayllaridagi kabi GET {ttsApiBase}/api/tts); bermasa brauzer speechSynthesis.
  *   onProgress({ status: "in_progress" | "complete" | "incomplete", answeredCount,
  *                response?, responses, phase, reasonCode? })
  *   onComplete(result)   — natija ekrani chiqqanda bir marta; erta chiqishda chaqirilmaydi
+ *   onFinished(payload)  — o‘quvchi “Yakunlash” / “Darslarni boshlash” ni bosganda bir marta (ingliz tili diagnostikasidagi kabi):
+ *                          { lessonId, lessonTitle, durationSec, ...result }; erta chiqilgan bo‘lsa completionType: "INCOMPLETE"
  *   result:    placementLevel, recommendedCourse (satr: "grade_5"), confidence, borderlineWith,
  *              answeredCount, totalQuestions, score, levelStats, skillStats,
  *              completionType, flags, responses  (+ matematikaga xos qo‘shimcha kalitlar)
@@ -471,6 +472,7 @@ function isRestorableResult(saved, propGrade) {
 }
 
 // Bank tekshiruvi: muammolar ro‘yxatini qaytaradi (bo‘sh bo‘lsa — to‘g‘ri).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- sinovlar (vm orqali) chaqiradi
 function validateMathBank(itemBank = MATH_ITEMS) {
   const problems = [];
   const seen = new Set();
@@ -497,7 +499,259 @@ function validateMathBank(itemBank = MATH_ITEMS) {
   });
   return problems;
 }
+// ── Ovozli o‘qish (TTS) uchun matn tayyorlash ──
+// Dars fayllaridagi usul bilan bir xil: sonlar so‘z bilan, amallar nomi bilan aytiladi, KaTeX ifodalari gapga aylanadi.
+const LANG_TAG = { ru: "[Русское произношение]", uz: "[O'zbekcha tallaffuz]", en: "[English pronunciation]" };
+function buildTtsUrl(base, text, lang) {
+  const tag = LANG_TAG[lang] ?? LANG_TAG.uz;
+  const body = `${tag} ${String(text).slice(0, Math.max(0, 1000 - tag.length - 1))}`;
+  return `${String(base).replace(/\/$/, "")}/api/tts?text=${encodeURIComponent(body).replace(/%5B/g, "[").replace(/%5D/g, "]")}&g=m`;
+}
+
+const SPEECH_NUMBERS = {
+  uz: { 0: "nol", 1: "bir", 2: "ikki", 3: "uch", 4: "to'rt", 5: "besh", 6: "olti", 7: "yetti", 8: "sakkiz", 9: "to'qqiz", 10: "o'n", 20: "yigirma", 30: "o'ttiz", 40: "qirq", 50: "ellik", 60: "oltmish", 70: "yetmish", 80: "sakson", 90: "to'qson" },
+  ru: {
+    0: "ноль", 1: "один", 2: "два", 3: "три", 4: "четыре", 5: "пять", 6: "шесть", 7: "семь", 8: "восемь", 9: "девять", 10: "десять",
+    11: "одиннадцать", 12: "двенадцать", 13: "тринадцать", 14: "четырнадцать", 15: "пятнадцать", 16: "шестнадцать", 17: "семнадцать",
+    18: "восемнадцать", 19: "девятнадцать", 20: "двадцать", 30: "тридцать", 40: "сорок", 50: "пятьдесят", 60: "шестьдесят",
+    70: "семьдесят", 80: "восемьдесят", 90: "девяносто",
+  },
+};
+const RU_HUNDREDS = { 1: "сто", 2: "двести", 3: "триста", 4: "четыреста", 5: "пятьсот", 6: "шестьсот", 7: "семьсот", 8: "восемьсот", 9: "девятьсот" };
+const RU_DENOMINATORS = {
+  2: ["вторая", "вторых"], 3: ["третья", "третьих"], 4: ["четвертая", "четвертых"], 5: ["пятая", "пятых"], 6: ["шестая", "шестых"],
+  7: ["седьмая", "седьмых"], 8: ["восьмая", "восьмых"], 9: ["девятая", "девятых"], 10: ["десятая", "десятых"],
+  11: ["одиннадцатая", "одиннадцатых"], 12: ["двенадцатая", "двенадцатых"], 100: ["сотая", "сотых"],
+};
+const isNum = (value) => /^\d+$/.test(value);
+function numberToWords(value, lang) {
+  if (lang === "en") return String(value);
+  const n = Number(value);
+  const words = SPEECH_NUMBERS[lang] ?? SPEECH_NUMBERS.uz;
+  if (!Number.isInteger(n) || n < 0 || n > 999999) return String(value);
+  if (Object.prototype.hasOwnProperty.call(words, n)) return words[n];
+  if (n >= 1000) {
+    const thousands = Math.floor(n / 1000);
+    const rest = n % 1000;
+    let head;
+    if (lang === "ru") {
+      const lastTwo = thousands % 100;
+      const last = thousands % 10;
+      const form = lastTwo >= 11 && lastTwo <= 19 ? "тысяч" : last === 1 ? "тысяча" : last >= 2 && last <= 4 ? "тысячи" : "тысяч";
+      head = `${numberToWords(thousands, lang).replace(/один$/, "одна").replace(/два$/, "две")} ${form}`;
+    } else head = `${numberToWords(thousands, lang)} ming`;
+    return rest ? `${head} ${numberToWords(rest, lang)}` : head;
+  }
+  if (n < 20 && lang === "uz") return `${words[10]} ${words[n - 10]}`;
+  if (n < 100) return `${words[Math.floor(n / 10) * 10]} ${words[n % 10]}`.trim();
+  const hundred = lang === "ru" ? RU_HUNDREDS[Math.floor(n / 100)] : `${words[Math.floor(n / 100)]} yuz`;
+  const rest = n % 100;
+  return rest ? `${hundred} ${numberToWords(rest, lang)}` : hundred;
+}
+function fractionToWords(numerator, denominator, lang) {
+  if (lang === "en") return `${numerator} over ${denominator}`;
+  if (lang === "ru") {
+    const n = Number(numerator);
+    const d = Number(denominator);
+    const forms = RU_DENOMINATORS[d];
+    const cardinal = numberToWords(n, lang);
+    const numeratorWord = n % 100 >= 11 && n % 100 <= 19 ? cardinal : cardinal.replace(/один$/, "одна").replace(/два$/, "две");
+    if (d === 0 || d === 1) return `${cardinal} разделить на ${numberToWords(d, lang)}`;
+    return forms ? `${numeratorWord} ${n === 1 ? forms[0] : forms[1]}` : `${cardinal} разделить на ${numberToWords(d, lang)}`;
+  }
+  return `${numberToWords(denominator, lang)}dan ${numberToWords(numerator, lang)}`;
+}
+function decimalToWords(whole, fraction, lang) {
+  if (lang === "en") return `${whole} point ${[...fraction].join(" ")}`;
+  if (fraction.length > 3) {
+    const digits = [...fraction].map((digit) => numberToWords(digit, lang)).join(" ");
+    return lang === "ru" ? `${numberToWords(whole, lang)} целых, ${digits}` : `${numberToWords(whole, lang)} butun, ${digits}`;
+  }
+  if (lang === "ru") {
+    const feminine = (value) => {
+      const n = Number(value);
+      const words = numberToWords(value, lang);
+      if (n % 100 >= 11 && n % 100 <= 19) return words;
+      if (n % 10 === 1) return words.replace(/один$/, "одна");
+      if (n % 10 === 2) return words.replace(/два$/, "две");
+      return words;
+    };
+    const wholeNumber = Number(whole);
+    const fractionNumber = Number(fraction);
+    const wholeForm = wholeNumber % 100 !== 11 && wholeNumber % 10 === 1 ? "целая" : "целых";
+    const one = fractionNumber % 100 !== 11 && fractionNumber % 10 === 1;
+    const place = one ? { 1: "десятая", 2: "сотая", 3: "тысячная" } : { 1: "десятых", 2: "сотых", 3: "тысячных" };
+    return `${feminine(whole)} ${wholeForm} ${feminine(fraction)} ${place[fraction.length]}`;
+  }
+  return `${numberToWords(whole, lang)} butun ${{ 1: "o'ndan", 2: "yuzdan", 3: "mingdan" }[fraction.length]} ${numberToWords(fraction, lang)}`;
+}
+
+const SPEECH = {
+  uz: {
+    mul: " karra ", div: " bo'lingan ", ratio: " ga ", plus: " qo'shuv ", minus: " minus ", eq: " teng ", lt: " kichik ", gt: " katta ",
+    le: " kichik yoki teng ", ge: " katta yoki teng ", ne: " teng emas ", approx: " taxminan ", deg: " daraja ", pct: " foiz ", pi: " pi ",
+    dots: " va hokazo ", abs: "modul", fact: "faktorial",
+    fn: { sin: "sinus", cos: "kosinus", tan: "tangens", cot: "kotangens" },
+    letters: { x: "iks", y: "igrek", n: "en", b: "be", d: "de", q: "ku", r: "er" },
+  },
+  ru: {
+    mul: " умножить на ", div: " разделить на ", ratio: " к ", plus: " плюс ", minus: " минус ", eq: " равно ", lt: " меньше ", gt: " больше ",
+    le: " меньше или равно ", ge: " больше или равно ", ne: " не равно ", approx: " примерно ", deg: " градусов ", pct: " процентов ", pi: " пи ",
+    dots: " и так далее ", abs: "модуль", fact: "факториал",
+    fn: { sin: "синус", cos: "косинус", tan: "тангенс", cot: "котангенс" },
+    letters: { x: "икс", y: "игрек", n: "эн", a: "а", b: "бэ", d: "дэ", q: "ку", r: "эр" },
+  },
+  en: {
+    mul: " times ", div: " divided by ", ratio: " to ", plus: " plus ", minus: " minus ", eq: " equals ", lt: " less than ", gt: " greater than ",
+    le: " less than or equal to ", ge: " greater than or equal to ", ne: " not equal to ", approx: " about ", deg: " degrees ", pct: " percent ", pi: " pi ",
+    dots: " and so on ", abs: "absolute value of", fact: "factorial",
+    fn: { sin: "sine", cos: "cosine", tan: "tangent", cot: "cotangent" },
+    letters: {},
+  },
+};
+
+const spokenNum = (value, lang) => (isNum(value) ? numberToWords(value, lang) : value);
+function speakRoot(operand, lang) {
+  const word = spokenNum(operand, lang);
+  const simple = isNum(operand) || /^[A-Za-z]$/.test(operand);
+  if (lang === "ru") return simple ? `корень из ${word}` : `корень из выражения ${word},`;
+  if (lang === "en") return simple ? `square root of ${word}` : `square root of ${word},`;
+  if (isNum(operand)) return `${word}ning kvadrat ildizi`;
+  return simple ? `${word} ning kvadrat ildizi` : `kvadrat ildiz ostida ${word},`;
+}
+function speakFraction(top, bottom, lang) {
+  if (lang === "ru") return `дробь, числитель ${top}, знаменатель ${bottom},`;
+  if (lang === "en") return `fraction, numerator ${top}, denominator ${bottom},`;
+  return `surati ${top}, maxraji ${bottom},`;
+}
+function speakLog(base, argument, lang) {
+  if (lang === "ru") return `логарифм ${argument} по основанию ${base}`;
+  if (lang === "en") return `log base ${base} of ${argument}`;
+  return `${argument} ning ${base} asosli logarifmi`;
+}
+function speakIndex(letter, index, lang) {
+  if (lang === "ru") return `${letter} с индексом ${index}`;
+  if (lang === "en") return `${letter} sub ${index}`;
+  return `${letter} indeks ${index}`;
+}
+// Daraja: qavs ichidagi asos “hammasi” deb aytiladi, shunda x + 3 ning kvadrati x + (3 kvadrat) bilan adashmaydi.
+function speakPower(base, exponent, lang) {
+  const paren = base.startsWith("(");
+  const inner = spokenNum(paren ? base.slice(1, -1).trim() : base, lang);
+  const power = spokenNum(exponent, lang);
+  const square = exponent === "2";
+  if (square || exponent === "3") {
+    if (lang === "ru") return paren ? `${inner}, всё в ${square ? "квадрате" : "кубе"},` : `${inner} в ${square ? "квадрате" : "кубе"}`;
+    if (lang === "en") return paren ? `${inner}, all ${square ? "squared" : "cubed"},` : `${inner} ${square ? "squared" : "cubed"}`;
+    return paren ? `${inner}, hammasining ${square ? "kvadrati" : "kubi"},` : `${inner} ${square ? "kvadrat" : "kub"}`;
+  }
+  if (lang === "ru") return `${inner}${paren ? ", всё" : ""} в степени ${power}`;
+  if (lang === "en") return `${inner}${paren ? ", all" : ""} to the power ${power}`;
+  return paren ? `${inner}, hammasining ${power} darajasi,` : `${inner} ning ${power} darajasi`;
+}
+// edges=false: bo‘lak boshidagi nuqta (“…daraja. Uchidagi…”) saqlanadi; to‘liq gap yig‘ilgach bosh/oxiridagi tinish belgilari olinadi.
+function tidySpeech(text, edges = true) {
+  const tidy = text
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,.!?;:])/g, "$1")
+    .replace(/([,.!?;:])(?:\s*[,.;:])+/g, "$1")
+    .replace(/,\s*([.!?])/g, "$1")
+    .trim();
+  return edges ? tidy.replace(/^[\s,.;:]+/, "") : tidy;
+}
+// Unicode belgilar va sonlar → so‘zlar (matn ham, KaTeX dan chiqqan ifoda ham shu bosqichdan o‘tadi).
+function symbolsToWords(text, lang) {
+  const T = SPEECH[lang];
+  return text
+    .replace(/(\d+)[.,](\d+)/g, (_, whole, fraction) => decimalToWords(whole, fraction, lang))
+    .replace(/(\d+)\s*\/\s*(\d+)/g, (_, top, bottom) => fractionToWords(top, bottom, lang))
+    .replace(/([A-Za-z0-9]+)([²³⁴⁵⁶⁷⁸⁹]+)/g, (_, base, sup) => speakPower(base, [...sup].map((char) => SUPERSCRIPT.indexOf(char)).join(""), lang))
+    .replace(/√\s*(\d+|[A-Za-z]|\([^()]*\))/g, (_, operand) => speakRoot(operand.replace(/^\(|\)$/g, "").trim(), lang))
+    .replace(/([A-Za-z])([₀-₉]+)/g, (_, letter, sub) => speakIndex(letter, [...sub].map((char) => SUBSCRIPT.indexOf(char)).join(""), lang))
+    .replace(/−/g, T.minus)
+    .replace(/[×·]/g, T.mul).replace(/÷/g, T.div).replace(/∶/g, T.ratio)
+    .replace(/≤/g, T.le).replace(/≥/g, T.ge).replace(/≠/g, T.ne).replace(/≈/g, T.approx)
+    .replace(/</g, T.lt).replace(/>/g, T.gt).replace(/=/g, T.eq).replace(/\+/g, T.plus)
+    .replace(/%/g, T.pct).replace(/°/g, T.deg).replace(/π/g, T.pi).replace(/…/g, T.dots)
+    .replace(/\s*\/\s*/g, T.div);
+}
+// Yakuniy tozalash: 2x → “ikki iks”, qolgan raqamlar → so‘z, o‘qib bo‘lmaydigan belgilar olib tashlanadi.
+function finishSpeech(text, lang, keepDigits = false) {
+  const letters = SPEECH[lang].letters;
+  let result = text
+    .replace(/(\d)-(?=\p{L})/gu, "$1 ")
+    .replace(/(\d)([A-Za-z])/g, "$1 $2")
+    .replace(/(^|[^A-Za-z'])([a-z])(?![A-Za-z'])/g, (match, before, letter) => (letters[letter] ? `${before}${letters[letter]}` : match));
+  result = result.replace(/\d+/g, (digits) => (keepDigits || lang === "en" || digits.length > 6 ? digits : numberToWords(digits, lang)));
+  return tidySpeech(result.replace(/[()[\]{}|]/g, " ").replace(/;/g, ",").replace(/[^\p{L}\p{N}\s.,!?:'-]/gu, " "), false);
+}
+// KaTeX (TeX) ifodasi → so‘zlar. Tuzilma (kasr, ildiz, daraja, logarifm…) birinchi, belgilar keyin.
+function speakMath(tex, lang, ratio) {
+  let s = String(tex).replace(/\{,\}/g, ",").replace(/\\(left|right)(?![A-Za-z])/g, "").replace(/\\[,;:! ]/g, " ");
+  s = s.replace(/\^\{?\\circ\}?|\\circ/g, "°").replace(/-/g, " − ");
+  for (let pass = 0; pass < 3; pass += 1) {
+    s = s.replace(/\\d?frac\{([^{}]*)\}\{([^{}]*)\}/g, (_, top, bottom) => (
+      isNum(top.trim()) && isNum(bottom.trim()) ? fractionToWords(top.trim(), bottom.trim(), lang) : speakFraction(top.trim(), bottom.trim(), lang)
+    ));
+  }
+  // Tuzilma so‘zlari atrofida bo‘sh joy: a\sqrt{2} → “a ikkining kvadrat ildizi” (“aikkining” emas).
+  s = s.replace(/\\sqrt\{([^{}]*)\}/g, (_, operand) => ` ${speakRoot(operand.trim(), lang)} `).replace(/\\sqrt\s*(\w)/g, (_, operand) => ` ${speakRoot(operand, lang)} `);
+  s = s.replace(/\\log_\{?(\w+)\}?\s*(\w+)/g, (_, base, argument) => ` ${speakLog(base, argument, lang)} `);
+  s = s.replace(/\\(?:operatorname|text)\{([^{}]*)\}/g, "$1");
+  s = s.replace(/(\([^()]*\)|[A-Za-z]|\d+(?:\.\d+)?)\^\{?([^{}\s]+)\}?/g, (_, base, exponent) => ` ${speakPower(base, exponent, lang)} `);
+  s = s.replace(/([A-Za-z])_\{?(\w)\}?/g, (_, letter, index) => ` ${speakIndex(letter, index, lang)} `);
+  s = s.replace(/\|([^|]+)\|/g, (_, inside) => ` ${SPEECH[lang].abs} ${inside} `);
+  s = s.replace(/(\d+)!/g, `$1 ${SPEECH[lang].fact}`);
+  s = s.replace(/\\(sin|cos|tan|cot)(?![A-Za-z])/g, (_, name) => ` ${SPEECH[lang].fn[name]} `)
+    .replace(/(^|[^A-Za-z])(tg|ctg)(?![A-Za-z])/g, (_, before, name) => `${before} ${SPEECH[lang].fn[name === "tg" ? "tan" : "cot"]} `);
+  s = s.replace(/\\(?:times|cdot)(?![A-Za-z])/g, "×").replace(/\\div(?![A-Za-z])/g, "÷").replace(/\\pi(?![A-Za-z])/g, "π")
+    .replace(/\\le(?![A-Za-z])/g, "≤").replace(/\\ge(?![A-Za-z])/g, "≥").replace(/\\neq?(?![A-Za-z])/g, "≠").replace(/\\approx/g, "≈")
+    .replace(/\\%/g, "%").replace(/\\[lc]?dots/g, "…").replace(/\\/g, "");
+  s = s.replace(/\s*:\s*/g, ratio ? " ∶ " : " ÷ ").replace(/(\d)\s*\(/g, "$1 × (").replace(/\)/g, ", ");
+  return finishSpeech(symbolsToWords(s, lang), lang);
+}
+// O‘zbek ovozlari qisqartmalarni (sm, km, m…) harfma-harf o‘qiydi — sondan keyin to‘liq so‘zga almashtiramiz.
+const UZ_UNITS = { km: "kilometr", sm: "santimetr", mm: "millimetr", kg: "kilogramm", ml: "millilitr", m: "metr", g: "gramm", l: "litr" };
+function expandUnits(text, lang) {
+  if (lang === "uz") return text.replace(/(\d)\s*(km|sm|mm|kg|ml|m|g|l)(?![\p{L}'])/gu, (_, digit, unit) => `${digit} ${UZ_UNITS[unit]}`);
+  if (lang === "ru") return text.replace(/км\/ч/g, "километров в час").replace(/м\/с/g, "метров в секунду");
+  return text.replace(/km\/h/g, "kilometers per hour");
+}
+// Ruscha oddiy matnda butun sonlar raqam bo‘lib qoladi: ovoz o‘zi kelishikni to‘g‘ri aytadi (“в 4 коробках”). Ifodalarda — so‘z bilan.
+function speakPlain(text, lang) {
+  let s = expandUnits(String(text), lang)
+    .replace(/(\d{1,3})\s(\d{3})(?!\d)/g, "$1$2").replace(/(\d{1,3})\s(\d{3})(?!\d)/g, "$1$2");
+  if (lang === "en") s = s.replace(/(\d{1,3}),(\d{3})(?!\d)/g, "$1$2");
+  s = s
+    .replace(/[‘’ʻʼ`]/g, "'").replace(/[“”«»"]/g, "")
+    .replace(/\s*[—–]\s*/g, ", ")
+    .replace(/(^|[\s(])-(?=[\dA-Za-z(])/g, "$1 − ").replace(/\s-\s/g, " − ")
+    .replace(/\s*:\s*/g, ", ");
+  return finishSpeech(symbolsToWords(s, lang), lang, lang === "ru");
+}
+// Savol/javob/xabar matni ($…$ — KaTeX ifodasi) → ovozga tayyor gap.
+function toSpeech(text, lang) {
+  const language = LANGS.includes(lang) ? lang : "uz";
+  const source = String(text ?? "");
+  const ratio = /nisbat|отнош|ratio/i.test(source);
+  return tidySpeech(splitMath(source).map((part) => (part.math ? speakMath(part.value, language, ratio) : speakPlain(part.value, language))).join(" "));
+}
+function questionSpeech(item, lang) {
+  return toSpeech(pickText(item.q, lang), lang);
+}
+function answerSpeech(item, lang) {
+  if (item.type === "choice" && item.optionTex) return toSpeech(`$${pickText(item.optionTex[item.correct], lang)}$`, lang);
+  return toSpeech(correctAnswerText(item, lang), lang);
+}
 // </logic>
+
+// ── LMS bilan aloqa: onFinished yuki ──
+const LESSON_ID = "math-placement-v1";
+const LESSON_TITLES = {
+  uz: "Matematika bo‘yicha joylashtirish diagnostikasi",
+  ru: "Диагностика уровня по математике",
+  en: "Mathematics placement diagnostic",
+};
 
 // ── Matnlar ──
 const CONTENT = {
@@ -572,6 +826,10 @@ const CONTENT = {
       { title: "Mavzuli mashqlar", text: "Qo‘shimcha mashq qilish uchun har bir mavzuga alohida mashqlar bor." },
     ],
     perkStats: [["Darslar", "Ochiq"], ["Coin", "Yig‘ing"], ["Mashq", "Mavzuli"]],
+    listen: "Eshitish",
+    sayTest: (name, grade, count, minutes) => `Salom, ${name}! ${grade}-sinf uchun ${count} ta qisqa savol, taxminan ${minutes} daqiqa. Bilmasangiz, “Bilmayman” tugmasini bosing.`,
+    sayFree: (name) => [`Salom, ${name}! Darslar siz uchun ochiq.`, "Kunlik darslar va vazifalar bilan coin va pointlar yig‘ing.", "Qo‘shimcha mashq uchun mavzuli mashqlar ham bor."],
+    sayScore: (score, total) => `${total} ta savoldan ${score} tasiga to‘g‘ri javob berdingiz.`,
     goCalm: "Boshlaymiz",
     soundOn: "Ovozni yoqish",
     soundOff: "Ovozni o‘chirish",
@@ -657,6 +915,10 @@ const CONTENT = {
       { title: "Упражнения по темам", text: "Для дополнительной практики у каждой темы есть свои упражнения." },
     ],
     perkStats: [["Уроки", "Открыты"], ["Коины", "Копи"], ["Практика", "По темам"]],
+    listen: "Слушать",
+    sayTest: (name, grade, count, minutes) => `Привет, ${name}! Для ${grade} класса ${count} коротких вопросов, примерно ${minutes} минут. Не знаешь — нажми «Не знаю».`,
+    sayFree: (name) => [`Привет, ${name}! Уроки для тебя открыты.`, "Проходи ежедневные уроки и задания — копи коины и поинты.", "Для дополнительной практики есть упражнения по темам."],
+    sayScore: (score, total) => `Верно отвечено на ${score} из ${total} вопросов.`,
     goCalm: "Начинаем",
     soundOn: "Включить звук",
     soundOff: "Выключить звук",
@@ -742,6 +1004,10 @@ const CONTENT = {
       { title: "Practice by topic", text: "Every topic has its own extra exercises to practise with." },
     ],
     perkStats: [["Lessons", "Open"], ["Coins", "Collect"], ["Practice", "By topic"]],
+    listen: "Listen",
+    sayTest: (name, grade, count, minutes) => `Hi ${name}! ${count} short questions for grade ${grade}, about ${minutes} minutes. If you are not sure, tap “I do not know”.`,
+    sayFree: (name) => [`Hi ${name}! Your lessons are open.`, "Finish daily lessons and tasks to collect coins and points.", "There are extra exercises by topic for more practice."],
+    sayScore: (score, total) => `You answered ${score} of ${total} questions correctly.`,
     goCalm: "Begin",
     soundOn: "Turn sound on",
     soundOff: "Mute sound",
@@ -768,8 +1034,8 @@ const REACTION_MS = { ok: 1100 };
 // data-URI bilan to‘ldiradi — shunda yuklanadigan yagona fayl rasm hostingiga muhtoj bo‘lmaydi.
 const INLINE_ART = {};
 const ART = {
-  waving: "mascot-waving.png", think: "mascot-think.png", thumbs: "mascot-thumbs.png", celebrate: "mascot-celebrate.png",
-  point: "mascot-point.png", trophy: "mascot-trophy.png", checklist: "mascot-checklist.png",
+  waving: "mascot-waving.png", think: "mascot-think.png", celebrate: "mascot-celebrate.png",
+  trophy: "mascot-trophy.png", checklist: "mascot-checklist.png",
   books: "mascot-books.png", laptop: "mascot-laptop.png", pencil: "mascot-pencil.png", sparkles: "sparkles.png", crown: "crown.png",
   iconTime: "icons/daily-reset.svg", iconQuestions: "icons/random-questions.svg", iconLesson: "icons/lesson.svg", iconDone: "icons/test-complete.svg",
   iconCoin: "icons/coin.svg", iconTrainer: "icons/trainer.svg",
@@ -793,22 +1059,23 @@ const ArtContext = createContext("/art");
 const artUrl = (name, base) => INLINE_ART[name] ?? `${base.replace(/\/$/, "")}/${name}`;
 
 // ── KaTeX ──
-// Ustuvorlik: `katex` prop → window.katex → pinlangan versiya + SRI bilan CDN. Yuklanmaguncha (yoki yuklanmasa)
-// ifodalar oddiy Unicode matn ko‘rinishida chiqadi, test to‘xtamaydi.
-const KATEX_BASE = "https://cdn.jsdelivr.net/npm/katex@0.19.1/dist";
+// Ustuvorlik: `katex` prop → window.katex → `katexBase` (ixtiyoriy: KaTeX dist papkasi manzili). Standart holatda hech qanday tashqi
+// manzil yuklanmaydi; KaTeX bo‘lmasa ifodalar oddiy Unicode matn ko‘rinishida chiqadi (3/4, x², √18), test to‘xtamaydi.
 const KATEX_SRI = {
   js: "sha384-a1WQdjRj162i159OYq041X6I4K8NenkrI09LlPmiHg0YOb7CR+wJOraXwK9abpnE",
   css: "sha384-WwGtaC6ywCHxA5cstpj/3+xIZvTez8dq2IcBQaXRkenHZ7FVVq1ZROtURwfbtTlG",
 };
+const KATEX_PINNED_SUFFIX = "katex@0.19.1/dist";
 const KatexContext = createContext(null);
 const katexLoads = new Map();
 function loadKatex(base) {
-  if (typeof window === "undefined") return Promise.resolve(null);
+  if (typeof window === "undefined" || !base) return Promise.resolve(null);
   if (window.katex) return Promise.resolve(window.katex);
   const root = base.replace(/\/$/, "");
   if (!katexLoads.has(root)) {
     katexLoads.set(root, new Promise((resolve) => {
-      const pinned = root === KATEX_BASE;
+      // SRI faqat aynan shu versiya (0.19.1) uchun qo‘yiladi.
+      const pinned = root.endsWith(KATEX_PINNED_SUFFIX);
       const css = document.createElement("link");
       css.rel = "stylesheet";
       css.href = `${root}/katex.min.css`;
@@ -827,7 +1094,7 @@ function loadKatex(base) {
 }
 function useKatex(katexProp, base) {
   const [loaded, setLoaded] = useState(() => (typeof window !== "undefined" ? window.katex ?? null : null));
-  const needed = !katexProp && !loaded;
+  const needed = !katexProp && !loaded && Boolean(base);
   useEffect(() => {
     if (!needed) return undefined;
     let alive = true;
@@ -838,7 +1105,6 @@ function useKatex(katexProp, base) {
 }
 
 const CSS = `
-@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;800;900&display=swap");
 @property --glow{syntax:"<color>";inherits:true;initial-value:#fe5b1a}
 .mp-root{--accent:#fe5b1a;--accent-dark:#e94b0d;--ink:#151515;--muted:#737373;--canvas:#f6f6f5;--line:#e9e5e2;--ok:#10b981;--bad:#ef4444;--warn:#f59e0b;--shadow:0 18px 45px rgba(63,39,27,.09),0 2px 5px rgba(63,39,27,.035);position:relative;display:flex;height:var(--mp-min-h,100dvh);min-height:0;overflow:hidden;color:var(--ink);font-family:Roboto,Arial,sans-serif;background:radial-gradient(circle at 10% 6%,color-mix(in srgb,var(--glow) 16%,transparent),transparent 40%),radial-gradient(circle at 94% 96%,color-mix(in srgb,var(--glow) 11%,transparent),transparent 38%),var(--canvas);transition:--glow .7s ease}
 .mp-root *,.mp-root *::before,.mp-root *::after{box-sizing:border-box}
@@ -945,6 +1211,14 @@ const CSS = `
 .mp-qmain{display:flex;flex-direction:column;justify-content:center;gap:clamp(14px,3vh,34px);min-width:0;min-height:0}
 .mp-qhead{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .mp-topic{display:inline-flex;align-items:center;gap:8px;padding:5px 14px 5px 6px;border-radius:999px;background:color-mix(in srgb,var(--glow) 12%,#fff);color:var(--glow);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;transition:color .7s}
+.mp-qleft{display:flex;align-items:center;gap:10px;min-width:0}
+.mp-listen{flex:none;display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px 0 11px;border:1px solid #eadfd9;border-radius:999px;background:#fff;color:#665752;font-size:13px;font-weight:800;cursor:pointer;transition:background .2s,border-color .2s,color .2s,transform .15s}
+.mp-listen:hover{border-color:var(--accent);background:#fff5ef;color:var(--accent-dark)}
+.mp-listen:active{transform:scale(.95)}
+.mp-listen.is-on{border-color:var(--glow);color:var(--glow);background:color-mix(in srgb,var(--glow) 9%,#fff)}
+.mp-listen.is-on svg path:nth-child(2){animation:mp-wave 1s ease-in-out infinite}
+.mp-listen.is-on svg path:nth-child(3){animation:mp-wave 1s .25s ease-in-out infinite}
+@keyframes mp-wave{0%,100%{opacity:.25}50%{opacity:1}}
 .mp-topic b{display:grid;place-items:center;min-width:26px;height:26px;padding:0 7px;border-radius:99px;background:var(--glow);color:#fff;font-size:11px;letter-spacing:0;transition:background .7s}
 .mp-root .mp-minimasc{display:none;height:clamp(44px,7vh,60px);width:auto}
 .mp-q{margin:0;font-size:clamp(21px,calc(1.2vw + 2.5vh),48px);line-height:1.3;letter-spacing:-.025em;font-weight:800}
@@ -1131,6 +1405,7 @@ const CSS = `
   .mp-tile{min-height:clamp(44px,6.2vh,58px)}
 }
 @media (max-width:860px) and (min-height:1100px){.mp-rules{display:grid}}
+@media (max-width:420px){.mp-listen{width:36px;padding:0;justify-content:center}.mp-listen span{display:none}}
 @media (max-width:860px){.mp-perks{gap:6px;margin:0}.mp-perks span,.mp-perks li::after{display:none}.mp-perks li{padding:5px 14px 5px 5px;border-radius:999px}.mp-perks i{width:34px}.mp-perks div{padding:0}.mp-perks b{font-size:clamp(13px,3.8vw,16px);line-height:1.2}}
 @media (max-width:860px) and (min-height:900px){.mp-perks li{padding:8px 16px 8px 8px}.mp-perks i{width:42px}.mp-perks div{gap:2px}.mp-perks span{display:block;font-size:13px}.mp-perks b{font-size:16px}}
 @media (max-width:860px){.mp-perkstats,.mp-setup.is-free .mp-sub{display:none}}
@@ -1185,6 +1460,149 @@ function useSfx(enabled = true) {
     finish: () => play([[523, 523, 0.14], [659, 659, 0.14], [784, 1046, 0.28]]),
     tick: () => play([[880, 880, 0.08]]),
   }), [play]);
+}
+
+// To‘g‘ri/xato/“Bilmayman” xabari: savol kartasi ham, ovoz ham aynan shu matnni ishlatadi.
+function feedbackMessage(ui, state, seed, itemId) {
+  const index = hashString(`${seed}:${itemId}`);
+  return state === "ok" ? ui.correct[index % ui.correct.length] : state === "bad" ? ui.wrong[index % ui.wrong.length] : ui.skipped;
+}
+
+// Javobdan keyingi gaplar: to‘g‘ri — faqat xabar; xato/“Bilmayman” — xabar va to‘g‘ri javob.
+function reactionSpeech(ui, lang, seed, reaction) {
+  const { response, item } = reaction;
+  const state = response.skipped ? "skip" : response.correct ? "ok" : "bad";
+  const message = toSpeech(feedbackMessage(ui, state, seed, item.id), lang);
+  return state === "ok" ? [message] : [message, `${toSpeech(ui.rightAnswer, lang)}: ${answerSpeech(item, lang)}`];
+}
+
+// ── Ovozli o‘qish ──
+// Dars fayllaridagi kabi: `ttsApiBase` berilsa serverdan (GET /api/tts), bo‘lmasa brauzer speechSynthesis. Bir vaqtda faqat bitta
+// navbat o‘ynaydi: yangi gap eskisini to‘xtatadi. Brauzer birinchi bosishgacha ovozni bloklasa, birinchi bosish/tugmada davom etadi.
+const VOICE_GAP_MS = 220;
+function pickPreviewVoice(synth, lang) {
+  const voices = synth.getVoices?.() || [];
+  const prefixes = lang === "uz" ? ["uz", "tr", "az", "en"] : lang === "en" ? ["en"] : ["ru"];
+  for (const prefix of prefixes) {
+    const voice = voices.find((item) => String(item.lang || "").toLowerCase().startsWith(prefix));
+    if (voice) return voice;
+  }
+  return null;
+}
+// Navbat mantiqi React’dan tashqarida (oddiy sinf): rekursiv o‘ynash va taymerlar renderga bog‘liq emas.
+class VoiceEngine {
+  constructor(notify) {
+    this.token = 0;
+    this.lines = [];
+    this.index = 0;
+    this.audio = null;
+    this.timer = null;
+    this.watchdog = null;
+    this.blocked = false;
+    this.enabled = true;
+    this.lang = "uz";
+    this.base = undefined;
+    this.notify = notify;
+  }
+
+  configure({ enabled, lang, base }) {
+    this.enabled = enabled;
+    this.lang = lang;
+    this.base = base;
+  }
+
+  halt() {
+    this.token += 1;
+    clearTimeout(this.timer);
+    clearTimeout(this.watchdog);
+    if (this.audio) {
+      try { this.audio.onended = null; this.audio.onerror = null; this.audio.pause(); } catch { /* audio yo‘q */ }
+    }
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch { /* sintez yo‘q */ }
+    }
+    this.notify(false);
+  }
+
+  speak(lines, force = false) {
+    const list = (Array.isArray(lines) ? lines : [lines]).map((line) => String(line ?? "").trim()).filter(Boolean);
+    this.halt();
+    this.lines = list;
+    this.blocked = false;
+    if ((!this.enabled && !force) || !list.length) return;
+    this.run(0, this.token);
+  }
+
+  // Brauzer ovozni bloklagan bo‘lsa, birinchi bosish/tugma bosilganda to‘xtagan joydan davom etadi.
+  resume() {
+    if (!this.blocked || !this.enabled || !this.lines.length) return;
+    this.blocked = false;
+    this.run(this.index, this.token);
+  }
+
+  run(index, token) {
+    if (token !== this.token) return;
+    if (index >= this.lines.length) { this.notify(false); return; }
+    this.index = index;
+    const text = this.lines[index];
+    let settled = false;
+    const settle = (blocked) => {
+      if (settled || token !== this.token) return;
+      settled = true;
+      clearTimeout(this.watchdog);
+      if (blocked) { this.blocked = true; this.notify(false); return; }
+      this.timer = setTimeout(() => this.run(index + 1, token), VOICE_GAP_MS);
+    };
+    const words = text.split(/\s+/).length;
+    this.watchdog = setTimeout(() => settle(false), Math.max(8000, Math.min(45000, words * 900 + 5000)));
+    this.notify(true);
+    if (this.base) {
+      if (!this.audio) {
+        this.audio = new Audio();
+        this.audio.crossOrigin = "anonymous";
+        this.audio.preload = "auto";
+      }
+      const element = this.audio;
+      element.onended = () => settle(false);
+      element.onerror = () => settle(false);
+      element.src = buildTtsUrl(this.base, text, this.lang);
+      const started = element.play();
+      if (started && started.catch) started.catch((error) => settle(Boolean(error) && error.name === "NotAllowedError"));
+    } else if (typeof window !== "undefined" && window.speechSynthesis && typeof SpeechSynthesisUtterance !== "undefined") {
+      const synth = window.speechSynthesis;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = this.lang === "uz" ? "uz-UZ" : this.lang === "en" ? "en-GB" : "ru-RU";
+      const voice = pickPreviewVoice(synth, this.lang);
+      if (voice) utterance.voice = voice;
+      utterance.rate = 0.95;
+      utterance.onend = () => settle(false);
+      utterance.onerror = (event) => settle(event.error === "not-allowed");
+      // cancel() dan keyin darhol speak() qilish Chrome’da jim qoladi — qisqa kutamiz.
+      this.timer = setTimeout(() => { try { synth.speak(utterance); } catch { settle(false); } }, 60);
+    } else {
+      settle(false);
+    }
+  }
+}
+
+function useVoice({ enabled, lang, ttsApiBase }) {
+  const [speaking, setSpeaking] = useState(false);
+  const [engine] = useState(() => new VoiceEngine(setSpeaking));
+  // Sozlamalar effektda yangilanadi (bu kanca ota-komponentning speak chaqiruvlaridan oldin e’lon qilingan, shuning uchun ular doim yangi qiymatni ko‘radi).
+  useEffect(() => { engine.configure({ enabled, lang, base: ttsApiBase }); }, [engine, enabled, lang, ttsApiBase]);
+  useEffect(() => {
+    const resume = () => engine.resume();
+    window.addEventListener("pointerdown", resume);
+    window.addEventListener("keydown", resume);
+    return () => {
+      window.removeEventListener("pointerdown", resume);
+      window.removeEventListener("keydown", resume);
+    };
+  }, [engine]);
+  useEffect(() => { if (!enabled) engine.halt(); }, [engine, enabled]);
+  useEffect(() => () => engine.halt(), [engine]);
+  const speak = useCallback((lines, options) => engine.speak(lines, Boolean(options?.force)), [engine]);
+  return useMemo(() => ({ speak, speaking }), [speak, speaking]);
 }
 
 // ── Storage ──
@@ -1429,7 +1847,7 @@ function IntroScreen({ ui, name, grade, lockedGrade, onPick, onStart, onHome }) 
   );
 }
 
-function QuestionCard({ item, ui, lang, seed, index, total, reaction, senior, onAnswer, onNext }) {
+function QuestionCard({ item, ui, lang, seed, index, total, reaction, senior, speaking, onListen, onAnswer, onNext }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
   const inputRef = useRef(null);
@@ -1437,7 +1855,7 @@ function QuestionCard({ item, ui, lang, seed, index, total, reaction, senior, on
   const state = answered ? (answered.skipped ? "skip" : answered.correct ? "ok" : "bad") : "idle";
   const order = useMemo(() => (item.type === "choice" ? seededShuffle(item.options.map((_, i) => i), seed, `opts-${item.id}`) : []), [item, seed]);
   const messageIndex = hashString(`${seed}:${item.id}`);
-  const message = state === "ok" ? ui.correct[messageIndex % ui.correct.length] : state === "bad" ? ui.wrong[messageIndex % ui.wrong.length] : ui.skipped;
+  const message = feedbackMessage(ui, state, seed, item.id);
   // Faqat to‘liq (qirqilmagan) pozalar: point va thumbs rasmlari chetidan kesilgan, shuning uchun ishlatilmaydi.
   const pose = state === "ok" ? (senior || messageIndex % 2 ? ART.checklist : ART.celebrate) : state === "bad" ? ART.pencil : state === "skip" ? ART.laptop : ART.think;
   const isLast = index === total - 1;
@@ -1470,7 +1888,16 @@ function QuestionCard({ item, ui, lang, seed, index, total, reaction, senior, on
     <article className="mp-card mp-qcard" data-state={state} data-item={item.id}>
       <div className="mp-qmain">
         <div className="mp-qhead">
-          <span className="mp-topic"><b>{DOMAIN_GLYPH[item.domain]}</b>{ui.domains[item.domain]}</span>
+          <div className="mp-qleft">
+            <span className="mp-topic"><b>{DOMAIN_GLYPH[item.domain]}</b>{ui.domains[item.domain]}</span>
+            <button type="button" className={`mp-listen ${speaking ? "is-on" : ""}`} onClick={onListen} aria-label={ui.listen} title={ui.listen}>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4z" fill="currentColor" />
+                <path d="M15.5 9a4 4 0 0 1 0 6" /><path d="M18 6.5a7.5 7.5 0 0 1 0 11" />
+              </svg>
+              <span>{ui.listen}</span>
+            </button>
+          </div>
           <Pic key={`mini-${pose}`} name={pose} className="mp-minimasc" />
         </div>
         <h2 className="mp-q"><QuestionText text={pickText(item.q, lang)} /></h2>
@@ -1533,7 +1960,7 @@ function QuestionCard({ item, ui, lang, seed, index, total, reaction, senior, on
   );
 }
 
-function QuizScreen({ item, ui, lang, seed, index, total, responses, reaction, senior, soundOn, onToggleSound, onAnswer, onNext, onExit }) {
+function QuizScreen({ item, ui, lang, seed, index, total, responses, reaction, senior, soundOn, speaking, onToggleSound, onListen, onAnswer, onNext, onExit }) {
   return (
     <div className="mp-stage">
       <div className="mp-focus">
@@ -1543,7 +1970,7 @@ function QuizScreen({ item, ui, lang, seed, index, total, responses, reaction, s
           <SoundToggle on={soundOn} onToggle={onToggleSound} ui={ui} />
           <button type="button" className="mp-icon-btn" onClick={onExit} aria-label={ui.exit} title={ui.exit}>✕</button>
         </header>
-        <QuestionCard key={item.id} item={item} ui={ui} lang={lang} seed={seed} index={index} total={total} reaction={reaction} senior={senior} onAnswer={onAnswer} onNext={onNext} />
+        <QuestionCard key={item.id} item={item} ui={ui} lang={lang} seed={seed} index={index} total={total} reaction={reaction} senior={senior} speaking={speaking} onListen={onListen} onAnswer={onAnswer} onNext={onNext} />
       </div>
     </div>
   );
@@ -1686,8 +2113,6 @@ function saveSoundPref(storageKey, on) {
   try { window.localStorage.setItem(`${storageKey}-sound`, on ? "on" : "off"); } catch { /* storage yopiq */ }
 }
 
-export { MATH_ITEMS, PLANS, getPlan, requiresTest, estimateMinutes, isSeniorGrade, buildNoTestResult, isRestorableResult, buildQueue, buildResult, buildResponse, answersMatch, isCorrectAnswer, isRestorableSession, validateMathBank, normalizeGrade, splitMath, texToPlain };
-
 /**
  * @param {{
  *   lang?: "uz" | "ru" | "en",
@@ -1699,9 +2124,11 @@ export { MATH_ITEMS, PLANS, getPlan, requiresTest, estimateMinutes, isSeniorGrad
  *   assetBase?: string,
  *   katex?: { renderToString: (tex: string, options?: object) => string },
  *   katexBase?: string,
+ *   ttsApiBase?: string,
  *   onHome?: () => void,
  *   onProgress?: (event: { status: "in_progress" | "complete" | "incomplete", answeredCount: number, responses: object[], phase: string, response?: object, reasonCode?: string }) => void,
  *   onComplete?: (result: ReturnType<typeof buildResult>) => void,
+ *   onFinished?: (payload: { lessonId: string, lessonTitle: string, durationSec: number | null, completionType: string }) => void,
  * }} props
  */
 export default function MathPlacement({
@@ -1713,10 +2140,12 @@ export default function MathPlacement({
   itemBank = MATH_ITEMS,
   assetBase = "/art",
   katex,
-  katexBase = KATEX_BASE,
+  katexBase,
+  ttsApiBase,
   onHome = () => {},
   onProgress,
   onComplete,
+  onFinished,
 }) {
   const activeLang = LANGS.includes(lang) ? lang : "uz";
   const ui = CONTENT[activeLang];
@@ -1738,7 +2167,10 @@ export default function MathPlacement({
   const [exitOpen, setExitOpen] = useState(false);
   const questionStartedAtRef = useRef(0);
   const completionReportedRef = useRef(false);
+  const finishedRef = useRef(false);
   const sfx = useSfx(soundOn);
+  const voice = useVoice({ enabled: soundOn, lang: activeLang, ttsApiBase });
+  const { speak } = voice;
   const katexLib = useKatex(katex, katexBase);
 
   useEffect(() => { saveSession(storageKey, session); }, [storageKey, session]);
@@ -1757,6 +2189,47 @@ export default function MathPlacement({
   useEffect(() => {
     if (currentItem && !reaction) questionStartedAtRef.current = Date.now();
   }, [currentItem, reaction]);
+
+  // ── Ovoz: qisqa va aniq. Ochilish ekrani → savol → javob xabari → natija. Har yangi gap eskisini to‘xtatadi. ──
+  const phase = session.phase;
+  const introKind = phase === "intro" && countdown === null ? (grade ? (requiresTest(grade) ? (propGrade !== null ? "test" : null) : "free") : "pick") : null;
+  useEffect(() => {
+    if (!introKind) return;
+    if (introKind === "pick") speak([toSpeech(`${ui.hello(name)} ${ui.introTitle}.`, activeLang), toSpeech(ui.pickGrade, activeLang)]);
+    else if (introKind === "free") speak(ui.sayFree(name).map((line) => toSpeech(line, activeLang)));
+    else {
+      const count = planTotal(getPlan(grade));
+      speak(toSpeech(ui.sayTest(name, grade, count, estimateMinutes(count)), activeLang));
+    }
+  }, [introKind, grade, activeLang, name, ui, speak]);
+
+  const questionId = phase === "quiz" && currentItem && !reaction ? currentItem.id : null;
+  useEffect(() => {
+    if (!questionId) return undefined;
+    const timer = setTimeout(() => speak(questionSpeech(currentItem, activeLang)), 350);
+    return () => clearTimeout(timer);
+  }, [questionId, currentItem, activeLang, speak]);
+
+  useEffect(() => {
+    if (reaction) speak(reactionSpeech(ui, activeLang, session.seed, reaction));
+  }, [reaction, ui, activeLang, session.seed, speak]);
+
+  const closing = phase === "result" || phase === "notest" || phase === "incomplete" ? phase : null;
+  useEffect(() => {
+    if (!closing) return;
+    const result = session.result;
+    let lines = [];
+    if (closing === "result" && result) {
+      const atOwn = result.ownGradeUnlocked && result.openGrade === result.studentGrade;
+      lines = [ui.sayScore(result.score, result.totalQuestions), `${ui.openTitle}: ${ui.openGrade(result.openGrade)}.`, atOwn ? ui.openNotePerfect : ui.openNoteBelow(result.openGrade)];
+    } else if (closing === "notest") lines = [ui.noTestTitle, ui.noTestText];
+    else if (closing === "incomplete") lines = [ui.incompleteTitle, ui.incompleteText];
+    speak(lines.map((line) => toSpeech(line, activeLang)));
+  }, [closing, session.result, ui, activeLang, speak]);
+
+  const listen = useCallback(() => {
+    speak(reaction ? reactionSpeech(ui, activeLang, session.seed, reaction) : questionSpeech(currentItem, activeLang), { force: true });
+  }, [reaction, ui, activeLang, session.seed, currentItem, speak]);
 
   const begin = useCallback(() => {
     const plan = getPlan(grade);
@@ -1825,6 +2298,7 @@ export default function MathPlacement({
   }, [reaction, advance]);
 
   const resetTest = useCallback(() => {
+    finishedRef.current = false;
     if (typeof window !== "undefined") {
       try { window.localStorage.removeItem(storageKey); } catch { /* storage yopiq */ }
     }
@@ -1850,6 +2324,36 @@ export default function MathPlacement({
     onProgress?.({ status: "incomplete", phase: "incomplete", reasonCode: incomplete.reasonCode, answeredCount: incomplete.answeredCount, responses: session.responses });
   }, [onProgress, session]);
 
+  // “Yakunlash” / “Darslarni boshlash”: LMS ga onFinished yuki bir marta yuboriladi, so‘ng onHome chaqiriladi.
+  const finish = useCallback(() => {
+    if (!finishedRef.current) {
+      finishedRef.current = true;
+      let payload = null;
+      if (session.result) payload = session.result;
+      else if (session.incomplete) {
+        const endedAt = session.incomplete.endedAt;
+        payload = {
+          completionType: "INCOMPLETE",
+          placementLevel: null,
+          recommendedCourse: null,
+          confidence: "unknown",
+          studentGrade: session.studentGrade,
+          totalQuestions: session.incomplete.totalQuestions,
+          answeredCount: session.incomplete.answeredCount,
+          reasonCode: session.incomplete.reasonCode,
+          responses: session.responses,
+          lang: activeLang,
+          startedAt: session.startedAt,
+          completedAt: endedAt,
+          durationSec: session.startedAt && endedAt ? Math.max(0, Math.round((Date.parse(endedAt) - Date.parse(session.startedAt)) / 1000)) : null,
+          engineVersion: ENGINE_VERSION,
+        };
+      }
+      if (payload) onFinished?.({ lessonId: LESSON_ID, lessonTitle: LESSON_TITLES[activeLang], durationSec: payload.durationSec ?? null, ...payload });
+    }
+    onHome();
+  }, [activeLang, onFinished, onHome, session]);
+
   const glow = session.phase === "quiz" && !senior ? GLOWS[Math.max(activeIndex, 0) % GLOWS.length] : GLOWS[0];
   let screen = null;
   if (session.phase === "intro") {
@@ -1860,15 +2364,15 @@ export default function MathPlacement({
   } else if (session.phase === "quiz" && currentItem) {
     screen = (
       <QuizScreen item={currentItem} ui={ui} lang={activeLang} seed={session.seed} index={activeIndex} total={session.queue.length}
-        responses={session.responses} reaction={reaction} senior={senior} soundOn={soundOn} onToggleSound={toggleSound}
+        responses={session.responses} reaction={reaction} senior={senior} soundOn={soundOn} speaking={voice.speaking} onToggleSound={toggleSound} onListen={listen}
         onAnswer={answerCurrent} onNext={advance} onExit={() => setExitOpen(true)} />
     );
   } else if (session.phase === "result" && session.result) {
-    screen = <ResultScreen ui={ui} name={name} result={session.result} senior={senior} onHome={onHome} />;
+    screen = <ResultScreen ui={ui} name={name} result={session.result} senior={senior} onHome={finish} />;
   } else if (session.phase === "notest" && session.result) {
-    screen = <NoTestScreen ui={ui} name={name} onHome={onHome} />;
+    screen = <NoTestScreen ui={ui} name={name} onHome={finish} />;
   } else if (session.phase === "incomplete" && session.incomplete) {
-    screen = <IncompleteScreen ui={ui} incomplete={session.incomplete} onRetake={resetTest} onHome={onHome} />;
+    screen = <IncompleteScreen ui={ui} incomplete={session.incomplete} onRetake={resetTest} onHome={finish} />;
   }
 
   return (

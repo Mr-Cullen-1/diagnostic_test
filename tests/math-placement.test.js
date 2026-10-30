@@ -356,11 +356,12 @@ test('splitMath va texToPlain (KaTeX yuklanmagandagi zaxira ko‘rinish)', () =>
 test('lms/math-placement.lms.jsx manba bilan bir xil (faqat INLINE_ART to‘ldirilgan) va hamma rasm ichida', () => {
   const lmsUrl = new URL('../lms/math-placement.lms.jsx', import.meta.url);
   assert.ok(existsSync(lmsUrl), 'lms fayli yo‘q: npm run build:lms');
-  const lms = readFileSync(lmsUrl, 'utf8');
+  // Windows’da git CRLF bilan chiqarishi mumkin — satr oxirlari solishtirishga ta’sir qilmasin.
+  const lms = readFileSync(lmsUrl, 'utf8').replace(/\r\n/g, '\n');
   const emptyArt = 'const INLINE_ART = {};';
   const filled = lms.split('\n').find((line) => line.startsWith('const INLINE_ART = {"'));
   assert.ok(filled, 'INLINE_ART to‘ldirilmagan');
-  assert.equal(lms.replace(filled, emptyArt), source, 'LMS fayli eskirgan: npm run build:lms ni qayta ishga tushiring');
+  assert.equal(lms.replace(filled, emptyArt), source.replace(/\r\n/g, '\n'),'LMS fayli eskirgan: npm run build:lms ni qayta ishga tushiring');
   const inlined = Object.keys(JSON.parse(filled.slice('const INLINE_ART = '.length, -1)));
   const used = [...new Set([...source.matchAll(/["']((?:icons\/)?[\w-]+\.(?:png|svg))["']/g)].map((match) => match[1]))];
   same(inlined.sort(), used.sort());
