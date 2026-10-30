@@ -465,7 +465,8 @@ function isRestorableSession(parsed, itemMap, propGrade) {
 // Diagnostika bir marta o‘tiladi: tugagan natija saqlanadi, qayta ochilganda test emas, natija ko‘rsatiladi.
 function isRestorableResult(saved, propGrade) {
   if (!saved || saved.engineVersion !== ENGINE_VERSION || typeof saved.placementLevel !== "string") return false;
-  if (!["FULL_PLACEMENT", "NO_TEST_REQUIRED"].includes(saved.completionType)) return false;
+  // 1-sinf (NO_TEST_REQUIRED) saqlanmaydi: bu oyna o‘tkinchi, qayta kirilganda odatdagi ochilish ekrani chiqadi.
+  if (saved.completionType !== "FULL_PLACEMENT") return false;
   return propGrade === null || saved.studentGrade === propGrade;
 }
 
@@ -1724,7 +1725,7 @@ export default function MathPlacement({
     const seed = attemptSeed ?? Date.now();
     const done = loadCompleted(storageKey, propGrade);
     if (done) {
-      return { ...createInitialSession(seed, propGrade), phase: done.completionType === "NO_TEST_REQUIRED" ? "notest" : "result", studentGrade: done.studentGrade, result: done };
+      return { ...createInitialSession(seed, propGrade), phase: "result", studentGrade: done.studentGrade, result: done };
     }
     return safeLoadSession(storageKey, itemMap, propGrade) ?? createInitialSession(seed, propGrade);
   });
@@ -1767,13 +1768,12 @@ export default function MathPlacement({
   const startNoTest = useCallback(() => {
     const result = buildNoTestResult({ studentGrade: grade, lang: activeLang });
     setSession({ ...session, phase: "notest", studentGrade: grade, plan: null, queue: [], responses: [], result });
-    saveCompleted(storageKey, result);
     if (!completionReportedRef.current) {
       completionReportedRef.current = true;
       onProgress?.({ status: "complete", answeredCount: 0, responses: [], phase: "notest" });
       onComplete?.(result);
     }
-  }, [activeLang, grade, onComplete, onProgress, session, storageKey]);
+  }, [activeLang, grade, onComplete, onProgress, session]);
 
   useEffect(() => {
     if (countdown === null) return undefined;

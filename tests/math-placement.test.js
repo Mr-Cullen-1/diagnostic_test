@@ -269,7 +269,7 @@ test('bir marta o‘tiladi: tugagan natija tiklanadi (mos sinf va versiya bilan)
   assert.ok(!isRestorableResult({ ...full, engineVersion: 'eski' }, 9));
   assert.ok(!isRestorableResult({ ...full, completionType: 'INCOMPLETE' }, 9));
   assert.ok(!isRestorableResult(null, 9));
-  assert.ok(isRestorableResult(buildNoTestResult({ studentGrade: 1, lang: 'ru' }), 1));
+  assert.ok(!isRestorableResult(buildNoTestResult({ studentGrade: 1, lang: 'ru' }), 1), '1-sinf oynasi saqlanmaydi');
 });
 
 test('taxminiy vaqt savollar soniga qarab; 9–11-sinfda jiddiyroq uslub', () => {

@@ -291,6 +291,10 @@ try {
   await viewport(1280, 800, false);
   await sleep(1500);
   await shot('D1-notest-desktop');
+  await send('Page.reload');
+  await waitFor(`document.readyState==='complete' && !!document.querySelector('.mp-root')`, 'qayta yuklandi (1-sinf)');
+  await sleep(900);
+  check('1-sinf: sahifa yangilansa 1-sinf oynasi emas, odatdagi ochilish ekrani chiqadi', await evaluate(`!!document.querySelector('.mp-setup') && !document.querySelector('.mp-notest')`));
   await open('?lang=en&grade=11');
   await startTest();
   await shot('D2-question-desktop');
