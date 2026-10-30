@@ -1045,7 +1045,7 @@ const CSS = `
 .mp-key:not(:disabled):hover{border-color:var(--accent);color:var(--accent);transform:translateY(-2px)}
 .mp-key:not(:disabled):active{transform:scale(.92);background:#fff5ef}
 .mp-key:disabled{opacity:.4;cursor:not-allowed}
-.mp-notice{display:flex;align-items:center;gap:12px;padding:clamp(10px,2vh,18px) 16px;border:1px solid #fcd2bd;border-radius:20px;background:#fff0e6;color:#bf4211;font-size:clamp(14px,2vh,17px);font-weight:700;line-height:1.4;animation:mp-rise .5s both}
+.mp-notice{display:flex;align-items:center;gap:12px;padding:clamp(10px,2vh,18px) 16px;border:1px solid #a7f3d0;border-radius:20px;background:#ecfdf5;color:#047857;font-size:clamp(14px,2vh,17px);font-weight:700;line-height:1.4;animation:mp-rise .5s both}
 .mp-notice img{flex:none;width:clamp(28px,4vh,38px);height:auto}
 .mp-sound:hover{transform:scale(1.08)}
 .mp-sound.is-floating{position:absolute;top:10px;right:10px;z-index:7;background:rgba(255,255,255,.94);box-shadow:0 6px 16px rgba(63,39,27,.16)}
