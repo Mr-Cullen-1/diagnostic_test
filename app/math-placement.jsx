@@ -968,7 +968,8 @@ const CSS = `
 .mp-input.is-bad{border-color:var(--bad);background:#fef2f2;color:#b91c1c}
 .mp-error{margin:8px 0 0;color:var(--bad);font-size:14px;font-weight:700}
 .mp-qside{display:grid;place-items:center;min-height:0;min-width:0}
-.mp-qside img,.mp-qside .mp-mascot{box-sizing:border-box;padding:6px;height:min(100%,clamp(150px,38vh,290px));width:auto;max-width:100%;object-fit:contain;filter:drop-shadow(0 12px 16px rgba(63,39,27,.18));animation:mp-pop .5s both}
+.mp-qpic{display:grid;place-items:center;height:min(100%,clamp(150px,38vh,290px));aspect-ratio:1;max-width:100%;min-height:0}
+.mp-qpic img,.mp-qpic .mp-mascot{box-sizing:border-box;padding:8px;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 12px 16px rgba(63,39,27,.18));animation:mp-pop .5s both}
 .mp-qbar{position:relative;grid-column:1/-1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 12px;min-height:clamp(58px,9vh,76px);margin-top:clamp(8px,1.6vh,18px);padding-top:clamp(10px,1.8vh,16px);border-top:1px solid #f1e7e2}
 .mp-qbar > .mp-btn{flex:0 0 auto;max-width:100%}
 .mp-qbar > .mp-btn:not(.mp-btn--soft){margin-left:auto}
@@ -1437,7 +1438,8 @@ function QuestionCard({ item, ui, lang, seed, index, total, reaction, senior, on
   const order = useMemo(() => (item.type === "choice" ? seededShuffle(item.options.map((_, i) => i), seed, `opts-${item.id}`) : []), [item, seed]);
   const messageIndex = hashString(`${seed}:${item.id}`);
   const message = state === "ok" ? ui.correct[messageIndex % ui.correct.length] : state === "bad" ? ui.wrong[messageIndex % ui.wrong.length] : ui.skipped;
-  const pose = state === "ok" ? (senior || messageIndex % 2 ? ART.thumbs : ART.celebrate) : state === "bad" ? ART.point : state === "skip" ? ART.laptop : ART.think;
+  // Faqat to‘liq (qirqilmagan) pozalar: point va thumbs rasmlari chetidan kesilgan, shuning uchun ishlatilmaydi.
+  const pose = state === "ok" ? (senior || messageIndex % 2 ? ART.checklist : ART.celebrate) : state === "bad" ? ART.pencil : state === "skip" ? ART.laptop : ART.think;
   const isLast = index === total - 1;
   const isChoice = item.type === "choice";
   const submitNumber = () => {
@@ -1504,7 +1506,7 @@ function QuestionCard({ item, ui, lang, seed, index, total, reaction, senior, on
           </div>
         )}
       </div>
-      <aside className="mp-qside"><Pic key={pose} name={pose} fallback={<MascotFallback />} /></aside>
+      <aside className="mp-qside"><div className="mp-qpic"><Pic key={pose} name={pose} fallback={<MascotFallback />} /></div></aside>
       <footer className="mp-qbar">
         {answered ? (
           <>
